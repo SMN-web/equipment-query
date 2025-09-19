@@ -1,7 +1,9 @@
-export function renderLogin(container) {
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+export function showLogin(container) {
   container.innerHTML = `
-    <div class="panel" id="login-panel">
-      <h2>🔐 Login</h2>
+    <div class="panel">
+      <h2>Login</h2>
       <input id="email" type="email" placeholder="Email" />
       <input id="password" type="password" placeholder="Password" />
       <button id="login-btn">Login</button>
@@ -9,14 +11,17 @@ export function renderLogin(container) {
     </div>
   `;
 
-  const btn = container.querySelector('#login-btn');
-  btn.addEventListener('click', async () => {
+  container.querySelector('#login-btn').addEventListener('click', async () => {
     const email = container.querySelector('#email').value;
     const password = container.querySelector('#password').value;
     const msg = container.querySelector('#login-msg');
+
     try {
-      await window.firebaseAuth.signInWithEmailAndPassword(email, password);
-      msg.innerText = 'Logging in...';
+      const userCredential = await signInWithEmailAndPassword(window.firebaseAuth, email, password);
+      const role = userCredential.user.role; // Or fetch from Firestore
+      if (role === 'admin') window.location.hash = '#admin';
+      else if (role === 'moderator') window.location.hash = '#moderator';
+      else window.location.hash = '#user';
     } catch (err) {
       msg.innerText = err.message;
     }
