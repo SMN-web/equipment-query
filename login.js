@@ -1,3 +1,5 @@
+import { sessionRedirect } from './session.js';
+
 export function showLogin(container) {
   container.innerHTML = `
     <h2>Login</h2>
@@ -43,6 +45,9 @@ export function showLogin(container) {
       } else {
         resultPre.textContent = 'Login successful. Cookie saved.';
       }
+
+      // Call session verify WITHOUT any routing; just show success message
+      await sessionRedirect(container, null, { noRedirect: true });
 
     } catch (err) {
       errorDiv.textContent = err.message;
