@@ -4,17 +4,24 @@ export function showLogin(container) {
     <form id="loginForm">
       <input type="text" id="usernameOrEmail" placeholder="Username or Email" required />
       <input type="password" id="password" placeholder="Password" required />
-      <label><input type="checkbox" id="keepSignedIn"/> Keep me signed in</label><br/>
+      <label><input type="checkbox" id="keepSignedIn" /> Keep me signed in</label><br />
       <button type="submit">Login</button>
       <div id="loginError" style="color:red; white-space: pre-wrap;"></div>
-      <div id="loginSuccess" style="color:green; white-space: pre-wrap; margin-top: 10px;"></div>
+      <textarea id="jwtToken" readonly style="width: 100%; height: 6em; margin-top: 10px; font-family: monospace; display:none;"></textarea>
+      <button id="copyTokenBtn" style="display:none; margin-top: 5px;">Copy JWT Token</button>
     </form>
   `;
 
-  document.getElementById('loginForm').addEventListener('submit', async e => {
+  const form = container.querySelector('#loginForm');
+  const errorDiv = container.querySelector('#loginError');
+  const jwtTokenTextarea = container.querySelector('#jwtToken');
+  const copyTokenBtn = container.querySelector('#copyTokenBtn');
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    document.getElementById('loginError').textContent = "";
-    document.getElementById('loginSuccess').textContent = "";
+    errorDiv.textContent = "";
+    jwtTokenTextarea.style.display = "none";
+    copyTokenBtn.style.display = "none";
 
     const payload = {
       usernameOrEmail: e.target.usernameOrEmail.value.trim(),
@@ -23,7 +30,7 @@ export function showLogin(container) {
     };
 
     try {
-      const res = await fetch('https://lo-in.smnglobal.workers.dev/api/login', {
+      const res = await fetch('https://se-on.smnglobal.workers.dev/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -33,20 +40,22 @@ export function showLogin(container) {
 
       if (!res.ok) throw new Error(data.error || "Login failed");
 
-      // Save token to localStorage
       if (data.token) {
-        localStorage.setItem('auth_token', data.token);
+        jwtTokenTextarea.value = data.token;
+        jwtTokenTextarea.style.display = "block";
+        copyTokenBtn.style.display = "inline-block";
       } else {
-        throw new Error('No token returned from login');
+        errorDiv.textContent = "Login succeeded but no token returned.";
       }
-
-      document.getElementById('loginSuccess').textContent = `Login successful! Token saved.`;
-
-      // After login, redirect or run session verification using token
-      window.location.hash = '#user';
-
     } catch (err) {
-      document.getElementById('loginError').textContent = err.message;
+      errorDiv.textContent = err.message;
     }
+  });
+
+  copyTokenBtn.addEventListener('click', () => {
+    jwtTokenTextarea.select();
+    document.execCommand('copy');
+    copyTokenBtn.textContent = "Copied!";
+    setTimeout(() => (copyTokenBtn.textContent = "Copy JWT Token"), 2000);
   });
 }
