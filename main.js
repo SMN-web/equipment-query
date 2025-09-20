@@ -5,15 +5,34 @@ const appDiv = document.getElementById('app');
 
 function router() {
   const hash = window.location.hash || '#login';
+  const token = localStorage.getItem('auth_token');
 
   if (hash === '#login') {
-    showLogin(appDiv);
+    if (token) {
+      // If token exists, verify session and redirect automatically
+      sessionRedirect(appDiv, null /* accept any role */);
+    } else {
+      // No token, show login page
+      showLogin(appDiv);
+    }
   } else if (hash.startsWith('#user')) {
-    sessionRedirect(appDiv, 'user');
+    if (token) {
+      sessionRedirect(appDiv, 'user');
+    } else {
+      window.location.hash = '#login';
+    }
   } else if (hash.startsWith('#admin')) {
-    sessionRedirect(appDiv, 'admin');
+    if (token) {
+      sessionRedirect(appDiv, 'admin');
+    } else {
+      window.location.hash = '#login';
+    }
   } else if (hash.startsWith('#moderator')) {
-    sessionRedirect(appDiv, 'moderator');
+    if (token) {
+      sessionRedirect(appDiv, 'moderator');
+    } else {
+      window.location.hash = '#login';
+    }
   } else {
     window.location.hash = '#login';
   }
