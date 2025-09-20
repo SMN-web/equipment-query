@@ -1,6 +1,18 @@
 export function renderAdmin(container, user) {
   container.innerHTML = `
-    <div class="panel" id="admin-panel">
+    <div class="panel"export function showAdminPanel(container) {
+  container.innerHTML = `
+    <h2>Admin Panel</h2>
+    <p>Welcome, admin!</p>
+    <button id="logoutBtn">Logout</button>
+  `;
+
+  document.getElementById('logoutBtn').onclick = async () => {
+    await fetch('https://lo-ou.smnglobal.workers.dev/api/logout', { method: 'POST', credentials: 'include' });
+    window.location.hash = '#login';
+  };
+}
+ id="admin-panel">
       <h2>👑 Admin Dashboard</h2>
       <button id="logout-btn">Logout</button>
 
