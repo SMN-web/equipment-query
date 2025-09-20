@@ -1,29 +1,43 @@
-import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
 export function showLogin(container) {
   container.innerHTML = `
-    <div class="panel">
-      <h2>Login</h2>
-      <input id="email" type="email" placeholder="Email" />
-      <input id="password" type="password" placeholder="Password" />
-      <button id="login-btn">Login</button>
-      <p id="login-msg"></p>
-    </div>
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="text" id="usernameOrEmail" placeholder="Username or Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <label><input type="checkbox" id="keepSignedIn"/> Keep me signed in</label><br/>
+      <button type="submit">Login</button>
+      <div id="loginError" style="color:red;"></div>
+    </form>
   `;
 
-  container.querySelector('#login-btn').addEventListener('click', async () => {
-    const email = container.querySelector('#email').value;
-    const password = container.querySelector('#password').value;
-    const msg = container.querySelector('#login-msg');
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('loginError').textContent = "";
+
+    const payload = {
+      usernameOrEmail: e.target.usernameOrEmail.value.trim(),
+      password: e.target.password.value,
+      keepSignedIn: e.target.keepSignedIn.checked,
+    };
 
     try {
-      const userCredential = await signInWithEmailAndPassword(window.firebaseAuth, email, password);
-      const role = userCredential.user.role; // Or fetch from Firestore
-      if (role === 'admin') window.location.hash = '#admin';
-      else if (role === 'moderator') window.location.hash = '#moderator';
-      else window.location.hash = '#user';
+      const res = await fetch('https://lo-in.smnglobal.workers.dev/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Login failed");
+
+      // Default redirect post login (session check will redirect properly)
+      window.location.hash = '#user';
+
+      // Use session verify to redirect correctly by role
+      import('./session.js').then(mod => mod.sessionRedirect(container, 'user'));
     } catch (err) {
-      msg.innerText = err.message;
+      document.getElementById('loginError').textContent = err.message;
     }
   });
 }
