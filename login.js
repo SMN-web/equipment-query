@@ -53,7 +53,7 @@ export function showLogin(container) {
       sessionPre.textContent = "Cookies visible to JS:\n" + document.cookie;
 
       // Now verify session via backend
-      const verifyRes = await fetch('/api/session-verify', {
+      const verifyRes = await fetch('https://se-on.smnglobal.workers.dev//api/session-verify', {
         method: 'GET',
         credentials: 'include',
       });
