@@ -30,7 +30,7 @@ export function showLogin(container) {
     };
 
     try {
-      const res = await fetch('https://se-on.smnglobal.workers.dev/api/login', {
+      const res = await fetch('https://lo-in.smnglobal.workers.dev/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
