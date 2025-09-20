@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Signup - Equipment Query App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="signup-admin"></div>
+
+  <script>
+    const container = document.getElementById('signup-admin');
+    container.innerHTML = `
+      <h2>First Admin Signup</h2>
+      <form id="adminSignupForm">
+        <label>Name:<input type="text" id="name" required /></label><br/>
+        <label>Username:<input type="text" id="username" required /></label><br/>
+        <label>Email:<input type="email" id="email" required /></label><br/>
+        <label>Password:<input type="password" id="password" required minlength="6" /></label><br/>
+        <button type="submit">Sign Up</button>
+      </form>
+      <div id="signupError" style="color:red;"></div>
+      <div id="signupSuccess" style="color:green;"></div>
+    `;
+
+    document.getElementById('adminSignupForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      document.getElementById('signupError').textContent = "";
+      document.getElementById('signupSuccess').textContent = "";
+
+      const data = {
+        name: e.target.name.value.trim(),
+        username: e.target.username.value.trim(),
+        email: e.target.email.value.trim(),
+        password: e.target.password.value,
+      };
+
+      try {
+        const res = await fetch('https://si-up.smnglobal.workers.dev/api/signup-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Signup failed");
+
+        document.getElementById('signupSuccess').textContent = "Admin signup successful! You can now log in.";
+        setTimeout(() => location.href = '/', 3000);
+      } catch (err) {
+        document.getElementById('signupError').textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>
