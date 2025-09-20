@@ -30,14 +30,14 @@ export function showLogin(container) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        credentials: 'include', // Important to receive cookie
+        credentials: 'include', // Important to receive and send cookies
       });
 
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
-      // After login success, call sessionRedirect to load dashboard panel
+      // On successful login, sessionRedirect verifies and routes user
       await sessionRedirect(container, null);
 
     } catch (err) {
