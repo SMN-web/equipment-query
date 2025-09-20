@@ -8,17 +8,20 @@ export function showLogin(container) {
       <button type="submit">Login</button>
       <pre id="loginResult" style="white-space: pre-wrap; word-break: break-word; margin-top:10px; color: green;"></pre>
       <div id="loginError" style="color:red; white-space: pre-wrap; margin-top: 10px;"></div>
+      <pre id="sessionResult" style="white-space: pre-wrap; margin-top: 10px; color: blue;"></pre>
     </form>
   `;
 
   const form = container.querySelector('#loginForm');
   const errorDiv = container.querySelector('#loginError');
   const resultPre = container.querySelector('#loginResult');
+  const sessionPre = container.querySelector('#sessionResult');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorDiv.textContent = '';
     resultPre.textContent = '';
+    sessionPre.textContent = '';
 
     const payload = {
       usernameOrEmail: e.target.usernameOrEmail.value.trim(),
@@ -44,8 +47,24 @@ export function showLogin(container) {
         resultPre.textContent = 'Login successful. Cookie saved.';
       }
 
-      // Display cookies visible to JS (to check if cookie saved)
       alert("Cookies visible to JS: " + document.cookie);
+
+      // Show cookies accessible to JS in page
+      sessionPre.textContent = "Cookies visible to JS:\n" + document.cookie;
+
+      // Now verify session via backend
+      const verifyRes = await fetch('/api/session-verify', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json();
+        sessionPre.textContent += "\nSession verification error:\n" + (errorData.error || verifyRes.statusText);
+      } else {
+        const sessionData = await verifyRes.json();
+        sessionPre.textContent += "\nSession verified:\n" + JSON.stringify(sessionData, null, 2);
+      }
 
     } catch (err) {
       errorDiv.textContent = err.message;
