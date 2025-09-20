@@ -33,11 +33,10 @@ export function showLogin(container) {
 
       if (!res.ok) throw new Error(data.error || "Login failed");
 
-      // Display JWT token to frontend for debugging/transition
-      document.getElementById('loginSuccess').textContent = `Login successful!\nJWT token:\n${data.token}`;
+      document.getElementById('loginSuccess').textContent = `Login successful! Redirecting...`;
 
-      // Optionally, automatically redirect (comment out if you want to view token)
-      // window.location.hash = '#user';
+      // After login success, verify session to get role & route accordingly
+      import('./session.js').then(mod => mod.sessionRedirect(container, 'user'));
 
     } catch (err) {
       document.getElementById('loginError').textContent = err.message;
