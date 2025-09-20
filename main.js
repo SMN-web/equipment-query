@@ -1,34 +1,24 @@
-import { renderLogin } from './login.js';
-import { renderAdmin } from './admin.js';
-import { renderUser } from './user.js';
-import { renderModerator } from './moderator.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { showLogin } from './login.js';
+import { sessionRedirect } from './session.js';
 
-const app = document.getElementById('app');
-const db = getFirestore();
+const appDiv = document.getElementById('app');
 
-// Initial render
-renderLogin(app);
+function router() {
+  const hash = window.location.hash || '#login';
 
-// Watch login state
-onAuthStateChanged(window.firebaseAuth, async (user) => {
-  if (!user) {
-    app.innerHTML = '';
-    renderLogin(app);
+  if (hash === '#login') {
+    showLogin(appDiv);
+  } else if (hash.startsWith('#user')) {
+    sessionRedirect(appDiv, 'user');
+  } else if (hash.startsWith('#admin')) {
+    sessionRedirect(appDiv, 'admin');
+  } else if (hash.startsWith('#moderator')) {
+    sessionRedirect(appDiv, 'moderator');
   } else {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const role = userDoc.data()?.role;
-
-      app.innerHTML = ''; // Clear old content
-      if (role === 'admin') renderAdmin(app, user);
-      else if (role === 'user') renderUser(app, user);
-      else if (role === 'moderator') renderModerator(app, user);
-      else renderLogin(app);
-    } catch (err) {
-      console.error(err);
-      renderLogin(app);
-    }
+    window.location.hash = '#login';
   }
-});
+}
+
+window.addEventListener('hashchange', router);
+window.addEventListener('load', router);
+router();
