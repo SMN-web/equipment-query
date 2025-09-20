@@ -2,10 +2,9 @@ export async function sessionRedirect(container, expectedRole) {
   container.innerHTML = `<p>Checking session...</p>`;
 
   const token = localStorage.getItem('auth_token');
-  container.innerHTML += `<p>Token: ${token ? token.slice(0, 20) + '...' : 'No token in localStorage'}</p>`;
   if (!token) {
-    container.innerHTML += `<p>No token found, redirecting to login.</p>`;
-    window.location.hash = '#login';
+    container.innerHTML = `<p>No token found. Redirecting to login.</p>`;
+    showLogin(container);
     return;
   }
 
@@ -17,19 +16,19 @@ export async function sessionRedirect(container, expectedRole) {
       },
     });
 
-    container.innerHTML += `<p>Response status: ${res.status}</p>`;
-
     if (!res.ok) {
       const errData = await res.json();
       throw new Error(errData.error || 'Session verification failed');
     }
 
     const userInfo = await res.json();
-    container.innerHTML += `<p>Logged in as ${userInfo.username}, role: ${userInfo.role}</p>`;
 
-    if (userInfo.role !== expectedRole) {
-      container.innerHTML += `<p>Role mismatch (expected ${expectedRole}), redirecting to login.</p>`;
-      window.location.hash = '#login';
+    container.innerHTML = `<p>Welcome ${userInfo.username}, Role: ${userInfo.role}</p>`;
+
+    if (expectedRole && userInfo.role !== expectedRole) {
+      container.innerHTML += `<p>Role mismatch, redirecting to login...</p>`;
+      localStorage.removeItem('auth_token');
+      showLogin(container);
       return;
     }
 
@@ -44,10 +43,13 @@ export async function sessionRedirect(container, expectedRole) {
         import('./moderator.js').then((mod) => mod.showModeratorPanel(container));
         break;
       default:
-        window.location.hash = '#login';
+        container.innerHTML += `<p>Unknown role, redirecting...</p>`;
+        localStorage.removeItem('auth_token');
+        showLogin(container);
     }
   } catch (err) {
-    container.innerHTML += `<p style="color:red;">Error: ${err.message}</p>`;
-    window.location.hash = '#login';
+    container.innerHTML = `<p style="color:red">Session error: ${err.message}</p>`;
+    localStorage.removeItem('auth_token');
+    showLogin(container);
   }
 }
