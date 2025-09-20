@@ -3,7 +3,6 @@ import { sessionRedirect } from './session.js';
 
 const appDiv = document.getElementById('app');
 
-// Flag to track if modal for session failure shown, to avoid loops
 let sessionFailureModalShown = false;
 
 async function router() {
@@ -17,7 +16,6 @@ async function router() {
         showLogin(appDiv);
       }
     } else {
-      // Modal was shown before, just render login UI directly now
       showLogin(appDiv);
     }
   } else if (hash.startsWith('#user')) {
