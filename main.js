@@ -1,6 +1,5 @@
 import { showLogin } from './login.js';
-import { checkSession } from './session.js';
-
+import { sessionRedirect } from './session.js';
 
 const appDiv = document.getElementById('app');
 
