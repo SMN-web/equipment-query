@@ -1,13 +1,15 @@
+import { sessionRedirect } from './session.js';
+
 export function showLogin(container) {
   container.innerHTML = `
     <h2>Login</h2>
     <form id="loginForm">
-      <input type="text" id="usernameOrEmail" placeholder="Username or Email" required />
-      <input type="password" id="password" placeholder="Password" required />
-      <label><input type="checkbox" id="keepSignedIn" /> Keep me signed in</label><br />
+      <input id="usernameOrEmail" type="text" placeholder="Username or Email" required />
+      <input id="password" type="password" placeholder="Password" required />
+      <label><input id="keepSignedIn" type="checkbox" /> Keep me signed in</label><br/>
       <button type="submit">Login</button>
-      <div id="loginError" style="color:red; white-space: pre-wrap;"></div>
-      <textarea id="jwtToken" readonly style="width: 100%; height: 6em; margin-top: 10px; font-family: monospace; display:none;"></textarea>
+      <div id="loginError" style="color:red; white-space: pre-wrap; margin-top: 10px;"></div>
+      <textarea id="jwtToken" readonly style="width: 100%; height: 6em; font-family: monospace; display:none; margin-top:10px;"></textarea>
       <button id="copyTokenBtn" style="display:none; margin-top: 5px;">Copy JWT Token</button>
     </form>
   `;
@@ -19,9 +21,9 @@ export function showLogin(container) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    errorDiv.textContent = "";
-    jwtTokenTextarea.style.display = "none";
-    copyTokenBtn.style.display = "none";
+    errorDiv.textContent = '';
+    jwtTokenTextarea.style.display = 'none';
+    copyTokenBtn.style.display = 'none';
 
     const payload = {
       usernameOrEmail: e.target.usernameOrEmail.value.trim(),
@@ -38,14 +40,21 @@ export function showLogin(container) {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Login failed");
+      if (!res.ok) throw new Error(data.error || 'Login failed');
 
       if (data.token) {
+        // Show token and save in localStorage
         jwtTokenTextarea.value = data.token;
-        jwtTokenTextarea.style.display = "block";
-        copyTokenBtn.style.display = "inline-block";
+        jwtTokenTextarea.style.display = 'block';
+        copyTokenBtn.style.display = 'inline-block';
+        errorDiv.textContent = 'Login successful! Token stored, loading your dashboard...';
+
+        localStorage.setItem('auth_token', data.token);
+
+        // After saving token, call sessionRedirect to load proper panel
+        await sessionRedirect(container, null);
       } else {
-        errorDiv.textContent = "Login succeeded but no token returned.";
+        errorDiv.textContent = 'Login succeeded but no token provided!';
       }
     } catch (err) {
       errorDiv.textContent = err.message;
@@ -55,7 +64,7 @@ export function showLogin(container) {
   copyTokenBtn.addEventListener('click', () => {
     jwtTokenTextarea.select();
     document.execCommand('copy');
-    copyTokenBtn.textContent = "Copied!";
-    setTimeout(() => (copyTokenBtn.textContent = "Copy JWT Token"), 2000);
+    copyTokenBtn.textContent = 'Copied!';
+    setTimeout(() => (copyTokenBtn.textContent = 'Copy JWT Token'), 2000);
   });
 }
