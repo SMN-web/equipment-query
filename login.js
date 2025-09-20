@@ -33,10 +33,17 @@ export function showLogin(container) {
 
       if (!res.ok) throw new Error(data.error || "Login failed");
 
-      document.getElementById('loginSuccess').textContent = `Login successful! Redirecting...`;
+      // Save token to localStorage
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      } else {
+        throw new Error('No token returned from login');
+      }
 
-      // After login success, verify session to get role & route accordingly
-      import('./session.js').then(mod => mod.sessionRedirect(container, 'user'));
+      document.getElementById('loginSuccess').textContent = `Login successful! Token saved.`;
+
+      // After login, redirect or run session verification using token
+      window.location.hash = '#user';
 
     } catch (err) {
       document.getElementById('loginError').textContent = err.message;
