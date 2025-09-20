@@ -1,5 +1,3 @@
-import { checkSession } from './session.js';
-
 export function showLogin(container) {
   container.innerHTML = `
     <h2>Login</h2>
@@ -45,9 +43,6 @@ export function showLogin(container) {
       } else {
         resultPre.textContent = 'Login successful. Cookie saved.';
       }
-
-      // After login success, add session verify UI
-      await checkSession(container);
 
     } catch (err) {
       errorDiv.textContent = err.message;
