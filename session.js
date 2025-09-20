@@ -7,11 +7,15 @@ export async function sessionRedirect(container, expectedRole) {
       credentials: 'include'
     });
 
-    if (!res.ok) throw new Error("Session invalid or expired");
+    container.innerHTML = `<p>Session verify response received: ${res.status}</p>`;
+
+    if (!res.ok) throw new Error(`Session verify returned status ${res.status}`);
 
     const userInfo = await res.json();
+    container.innerHTML = `<p>Logged in as ${userInfo.username} with role ${userInfo.role}</p>`;
 
     if (userInfo.role !== expectedRole) {
+      container.innerHTML += `<p>Role mismatch: expected ${expectedRole}, got ${userInfo.role}</p>`;
       window.location.hash = '#login';
       return;
     }
@@ -29,7 +33,8 @@ export async function sessionRedirect(container, expectedRole) {
       default:
         window.location.hash = '#login';
     }
-  } catch {
+  } catch (err) {
+    container.innerHTML = `<p>Error during session check: ${err.message}</p>`;
     window.location.hash = '#login';
   }
 }
