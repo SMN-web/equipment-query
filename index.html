@@ -1,30 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
-  <meta charset="UTF-8">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Equipment Query</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <link rel="stylesheet" href="./style.css">
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#317EFB" />
+
+  <!-- iOS support for standalone -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
 </head>
 <body>
   <div id="app"></div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  <script type="module" src="main.js"></script>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBRBLD2wC585-z1mviPpmZBlcNE5MLzSZU",
-    authDomain: "equipment-query.firebaseapp.com",
-    projectId: "equipment-query",
-    storageBucket: "equipment-query.firebasestorage.app",
-    messagingSenderId: "478408917129",
-    appId: "1:478408917129:web:d16a70951493f2d4190658"
-    };
-    const app = initializeApp(firebaseConfig);
-    window.firebaseAuth = getAuth(app);
-
-    import('./main.js');
+  <!-- Service Worker Registration for offline support -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(console.error);
+      });
+    }
   </script>
 </body>
 </html>
