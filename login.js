@@ -1,5 +1,3 @@
-import { sessionRedirect } from './session.js';
-
 export function showLogin(container) {
   container.innerHTML = `
     <h2>Login</h2>
@@ -8,16 +6,19 @@ export function showLogin(container) {
       <input id="password" type="password" placeholder="Password" required />
       <label><input id="keepSignedIn" type="checkbox" /> Keep me signed in</label><br/>
       <button type="submit">Login</button>
+      <pre id="loginResult" style="white-space: pre-wrap; word-break: break-word; margin-top:10px; color: green;"></pre>
       <div id="loginError" style="color:red; white-space: pre-wrap; margin-top: 10px;"></div>
     </form>
   `;
 
   const form = container.querySelector('#loginForm');
   const errorDiv = container.querySelector('#loginError');
+  const resultPre = container.querySelector('#loginResult');
 
-  form.addEventListener('submit', async e => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorDiv.textContent = '';
+    resultPre.textContent = '';
 
     const payload = {
       usernameOrEmail: e.target.usernameOrEmail.value.trim(),
@@ -28,18 +29,21 @@ export function showLogin(container) {
     try {
       const res = await fetch('https://lo-in.smnglobal.workers.dev/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        credentials: 'include', // Important to receive and send cookies
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // important for cookies!
       });
 
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
-      // On successful login, sessionRedirect verifies and routes user
-      await sessionRedirect(container, null);
-
+      // Show debug cookie header from response JSON
+      if (data.debugSetCookieHeader) {
+        resultPre.textContent = 'Cookie header sent by server:\n' + data.debugSetCookieHeader;
+      } else {
+        resultPre.textContent = 'Login successful. Cookie saved.';
+      }
     } catch (err) {
       errorDiv.textContent = err.message;
     }
