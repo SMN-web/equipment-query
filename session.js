@@ -1,10 +1,11 @@
-export async function sessionRedirect(container, expectedRole) {
+export async function sessionRedirect(container, expectedRole, options = {}) {
+  const { showModalOnFail = false } = options;
   container.innerHTML = `<p>Checking session...</p>`;
 
   try {
     const res = await fetch('https://se-on.smnglobal.workers.dev/api/session-verify', {
       method: 'GET',
-      credentials: 'include', // Send cookies
+      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -17,7 +18,6 @@ export async function sessionRedirect(container, expectedRole) {
     container.innerHTML = `<p>Welcome ${userInfo.username}, Role: ${userInfo.role}</p>`;
 
     if (expectedRole && userInfo.role !== expectedRole) {
-      container.innerHTML += `<p>Role mismatch, redirecting to login...</p>`;
       throw new Error('Role mismatch');
     }
 
@@ -32,11 +32,44 @@ export async function sessionRedirect(container, expectedRole) {
         import('./moderator.js').then(mod => mod.showModeratorPanel(container));
         break;
       default:
-        container.innerHTML += `<p>Unknown role, redirecting...</p>`;
         throw new Error('Unknown role');
     }
+    return true; // verification successful
+
   } catch (err) {
-    container.innerHTML = `<p style="color:red">Error: ${err.message}</p>`;
-    window.location.hash = '#login';
+    if (showModalOnFail) {
+      await showModal(`Authentication error: ${err.message}`);
+    }
+    return false; // verification failed
   }
+}
+
+// Simple modal helper that returns Promise resolved when user closes modal
+function showModal(message) {
+  return new Promise((resolve) => {
+    let modal = document.createElement('div');
+    modal.innerHTML = `
+      <div style="
+        position:fixed;
+        top:0; left:0; width:100vw; height:100vh;
+        background:rgba(0,0,0,0.5);
+        display:flex; align-items:center; justify-content:center;
+        z-index:1000;"
+      >
+        <div style="
+          background:#fff; padding:20px; border-radius:6px; max-width:300px;
+          text-align:center;
+        ">
+          <p>${message}</p>
+          <button id="modalOkBtn">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#modalOkBtn').onclick = () => {
+      document.body.removeChild(modal);
+      resolve();
+    };
+  });
 }
