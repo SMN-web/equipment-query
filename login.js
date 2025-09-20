@@ -1,3 +1,5 @@
+import { checkSession } from './session.js';
+
 export function showLogin(container) {
   container.innerHTML = `
     <h2>Login</h2>
@@ -31,19 +33,22 @@ export function showLogin(container) {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // important for cookies!
+        credentials: 'include',
       });
 
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
-      // Show debug cookie header from response JSON
       if (data.debugSetCookieHeader) {
         resultPre.textContent = 'Cookie header sent by server:\n' + data.debugSetCookieHeader;
       } else {
         resultPre.textContent = 'Login successful. Cookie saved.';
       }
+
+      // After login success, add session verify UI
+      await checkSession(container);
+
     } catch (err) {
       errorDiv.textContent = err.message;
     }
