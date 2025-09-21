@@ -1,5 +1,4 @@
 import { showSpinner, hideSpinner } from './spinner.js';
-import './admin-equip-list.css';
 
 // Utility: download CSV
 function downloadCSV(columns, rows, filename) {
