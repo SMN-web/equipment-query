@@ -33,6 +33,7 @@ export function showEquipUpload(container) {
       "capacity",
       "type",
       "owner",
+      "train",
       "location",
       "engineer",
       "riggerCHName",
@@ -46,6 +47,7 @@ export function showEquipUpload(container) {
       "length",
       "type",
       "owner",
+      "train",
       "location",
       "engineer",
       "operatorName",
@@ -79,12 +81,50 @@ export function showEquipUpload(container) {
     return html;
   }
 
+  // Validate phone number (blank or international format with +)
+  function isValidPhoneNumber(phone) {
+    if (!phone || phone.trim() === "") return true;
+    return /^\+?[0-9\s\-()]{7,20}$/.test(phone);
+  }
+
+  function validateRow(row, headers, equipmentType) {
+    const map = {};
+    headers.forEach((h, idx) => (map[h] = row[idx]));
+
+    if (!map["regNo"] || !map["plantNo"] || !map["description"] || !map["owner"]) {
+      return "Required fields (regNo, plantNo, description, owner) cannot be blank.";
+    }
+
+    if (!/^\d+$/.test(map["regNo"])) {
+      return "regNo must be an integer.";
+    }
+
+    if (
+      (equipmentType === "crane" && map["capacity"] && !/^\d+$/.test(map["capacity"])) ||
+      (equipmentType === "manlift" && map["length"] && !/^\d+$/.test(map["length"]))
+    ) {
+      return equipmentType === "crane"
+        ? "capacity must be an integer or blank."
+        : "length must be an integer or blank.";
+    }
+
+    if (equipmentType === "crane" && !isValidPhoneNumber(map["riggerPhNo"])) {
+      return "riggerPhNo must be blank or a valid phone number.";
+    }
+    if (equipmentType === "manlift" && !isValidPhoneNumber(map["operatorPhNo"])) {
+      return "operatorPhNo must be blank or a valid phone number.";
+    }
+
+    return null;
+  }
+
   function resetUI() {
     statusDiv.textContent = "";
     statusDiv.classList.remove("error");
     tableDiv.innerHTML = "<p>Uploaded CSV preview table will show here.</p>";
     uploadBtn.textContent = "Upload";
     uploadBtn.disabled = !fileInput.files.length;
+    container.parsedData = null;
   }
 
   fileInput.addEventListener("change", () => {
@@ -92,7 +132,7 @@ export function showEquipUpload(container) {
     uploadBtn.disabled = !fileInput.files.length;
   });
 
-  uploadBtn.addEventListener("click", () => {
+  uploadBtn.addEventListener("click", async () => {
     statusDiv.textContent = "";
     statusDiv.classList.remove("error");
 
@@ -121,7 +161,9 @@ export function showEquipUpload(container) {
 
           const headers = data[0];
           if (!validateHeaders(headers, expectedColumns)) {
-            statusDiv.textContent = `CSV header mismatch. Expected columns: ${expectedColumns.join(", ")}`;
+            statusDiv.textContent = `CSV header mismatch. Expected columns: ${expectedColumns.join(
+              ", "
+            )}`;
             statusDiv.classList.add("error");
             return;
           }
@@ -129,6 +171,9 @@ export function showEquipUpload(container) {
           const rows = data.slice(1);
           tableDiv.innerHTML = createTable(headers, rows);
           statusDiv.textContent = `Successfully parsed ${rows.length} rows for equipment type '${equipmentType}'.`;
+
+          container.parsedData = { headers, rows, equipmentType };
+
           uploadBtn.textContent = "Save";
         } catch {
           statusDiv.textContent = "Error reading CSV file.";
@@ -141,9 +186,61 @@ export function showEquipUpload(container) {
       };
       reader.readAsText(file);
     } else if (uploadBtn.textContent === "Save") {
-      // Implementation of save can go here
-      statusDiv.textContent = "Data saved successfully.";
+      const { headers, rows, equipmentType } = container.parsedData || {};
+
+      if (!headers || !rows) {
+        statusDiv.textContent = "No data available to save.";
+        statusDiv.classList.add("error");
+        return;
+      }
+
+      for (let i = 0; i < rows.length; i++) {
+        const err = validateRow(rows[i], headers, equipmentType);
+        if (err) {
+          statusDiv.textContent = `Row ${i + 1} validation error: ${err}`;
+          statusDiv.classList.add("error");
+          return;
+        }
+      }
+
+      statusDiv.textContent = "Saving data...";
       uploadBtn.disabled = true;
+
+      const dataRows = rows.map(row => {
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = row[idx];
+        });
+        return obj;
+      });
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        const resp = await fetch('https://ad-eq-up.smnglobal.workers.dev/api/equipment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ equipmentType, rows: dataRows })
+        });
+
+        const result = await resp.json();
+
+        if (resp.ok) {
+          statusDiv.textContent = `Data saved successfully. Inserted ${result.insertedCount} rows.`;
+          uploadBtn.disabled = true;
+          uploadBtn.textContent = "Saved";
+        } else {
+          statusDiv.textContent = `Save failed: ${result.error || 'Unknown error'}`;
+          statusDiv.classList.add("error");
+          uploadBtn.disabled = false;
+        }
+      } catch (err) {
+        statusDiv.textContent = "Network or server error during save.";
+        statusDiv.classList.add("error");
+        uploadBtn.disabled = false;
+      }
     }
   });
 
