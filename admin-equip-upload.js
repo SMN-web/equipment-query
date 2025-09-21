@@ -1,3 +1,5 @@
+import { showSpinner, hideSpinner } from './spinner.js';
+
 export function showEquipUpload(container) {
   container.innerHTML = `
     <div class="demo-card">
@@ -16,7 +18,7 @@ export function showEquipUpload(container) {
       </div>
       <div id="equipment-table"></div>
       <div id="failed-table" style="margin-top:1em"></div>
-      <p class="demo-txt">CSV importer with failed row editing and deletion.</p>
+      <p class="demo-txt">CSV importer with spinner, failed row editing and deletion.</p>
     </div>
   `;
 
@@ -96,7 +98,6 @@ export function showEquipUpload(container) {
     if (uploadBtn.textContent === "Upload") {
       const file = fileInput.files[0];
       const equipmentType = equipmentSelect.value;
-      const expectedColumns = columnsByEquipment[equipmentType];
 
       if (!file) {
         statusDiv.textContent = "Please select a CSV file.";
@@ -117,16 +118,13 @@ export function showEquipUpload(container) {
           }
 
           const headers = data[0];
-          // Accept any columns; only display for now
           const rows = data.slice(1);
-
           tableDiv.innerHTML = createTable(headers, rows);
           failedTableDiv.innerHTML = "";
           statusDiv.textContent = `Loaded ${rows.length} rows for preview. Click Save to validate and upload.`;
           parsedData = {headers, rows, equipmentType};
           failedRows = [];
           failedHeaders = headers;
-
           uploadBtn.textContent = "Save";
         } catch {
           statusDiv.textContent = "Error reading CSV file.";
@@ -144,15 +142,32 @@ export function showEquipUpload(container) {
         statusDiv.classList.add("error");
         return;
       }
-      statusDiv.textContent = "Saving data...";
-      uploadBtn.disabled = true;
+      // --- Client-side FILTER FOR UNIQUE plantNo/regNo ---
+      const regMap = new Map();
+      const plantMap = new Map();
+      const dupIndexes = new Set();
 
-      // Payload: all rows as objects
-      const dataRows = parsedData.rows.map(row => {
-        const obj = {};
-        parsedData.headers.forEach((h, idx) => obj[h] = row[idx]);
-        return obj;
+      // Find all repeats (NOT "first wins") and collect all indices, not just subsequent
+      parsedData.rows.forEach((row, idx) => {
+        const headers = parsedData.headers;
+        const reg = row[headers.indexOf('regNo')];
+        const pln = row[headers.indexOf('plantNo')];
+        if (regMap.has(reg)) { dupIndexes.add(idx); dupIndexes.add(regMap.get(reg)); }
+        else regMap.set(reg, idx);
+        if (plantMap.has(pln)) { dupIndexes.add(idx); dupIndexes.add(plantMap.get(pln)); }
+        else plantMap.set(pln, idx);
       });
+
+      // Prepare to send only those rows NOT in dupIndexes
+      const toSend = parsedData.rows.filter((_r, idx) => !dupIndexes.has(idx));
+      failedRows = Array.from(dupIndexes).map(idx => ({
+        row: parsedData.rows[idx],
+        error: "Duplicate regNo or plantNo in file"
+      }))
+      failedHeaders = parsedData.headers;
+      showSpinner(container);
+      statusDiv.textContent = "Saving unique rows...";
+      uploadBtn.disabled = true;
 
       try {
         const token = localStorage.getItem('auth_token');
@@ -162,35 +177,38 @@ export function showEquipUpload(container) {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token
           },
-          body: JSON.stringify({ equipmentType: parsedData.equipmentType, rows: dataRows })
+          body: JSON.stringify({
+            equipmentType: parsedData.equipmentType,
+            rows: toSend.map(row => Object.fromEntries(parsedData.headers.map((h, i) => [h, row[i]])))
+          })
         });
 
         const result = await resp.json();
+        hideSpinner(container);
 
-        // After save: Clear main table, show rejected rows as editable
-        tableDiv.innerHTML = "";
+        tableDiv.innerHTML = ""; // Clear success
         uploadBtn.textContent = "Upload";
         uploadBtn.disabled = false;
         fileInput.value = "";
 
-        if (resp.ok && result.success) {
-          if (result.failedRows && result.failedRows.length > 0) {
-            failedRows = result.failedRows;
-            failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
-            statusDiv.textContent = `Inserted: ${result.insertedCount}. Failed: ${result.failedRows.length}. Edit highlighted rows and save again.`;
-            // Add click listeners for edit/delete
-            addFailedRowHandlers();
-          } else {
-            failedTableDiv.innerHTML = "";
-            statusDiv.textContent = `All rows inserted successfully.`;
-            failedRows = [];
-          }
+        // Combine local duplicates with backend-failed rows
+        let finalFailed = [
+          ...failedRows,
+          ...(result.failedRows ? result.failedRows.map(f => ({row: parsedData.headers.map(h => f.row[h] || ""), error: f.error})) : [])
+        ];
+
+        if (finalFailed.length > 0) {
+          failedRows = finalFailed;
+          failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
+          statusDiv.textContent = `Inserted: ${result.insertedCount||0}. Failed: ${finalFailed.length}. Edit highlighted rows and save again.`;
+          addFailedRowHandlers();
         } else {
           failedTableDiv.innerHTML = "";
-          statusDiv.textContent = `Server error: ${result.error || 'Unknown error'}`;
-          statusDiv.classList.add("error");
+          statusDiv.textContent = `All rows inserted successfully.`;
+          failedRows = [];
         }
       } catch (err) {
+        hideSpinner(container);
         tableDiv.innerHTML = "";
         failedTableDiv.innerHTML = "";
         uploadBtn.textContent = "Upload";
@@ -215,13 +233,11 @@ export function showEquipUpload(container) {
     failedTableDiv.querySelectorAll(".editRowBtn").forEach(btn => {
       btn.onclick = async (e) => {
         const idx = parseInt(btn.getAttribute("data-row"));
-        // Get row data from cells
         const tr = failedTableDiv.querySelector(`tr[data-row="${idx}"]`);
         const cells = Array.from(tr.querySelectorAll("td[data-col]"));
         const editedRow = cells.map(c => c.textContent.trim());
         failedRows[idx].row = editedRow;
-        // Resubmit just this row
-        statusDiv.textContent = "Saving edited row...";
+        showSpinner(container);
         try {
           const token = localStorage.getItem('auth_token');
           const resp = await fetch('https://ad-eq-up.smnglobal.workers.dev/api/equipment', {
@@ -230,9 +246,13 @@ export function showEquipUpload(container) {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({ equipmentType: equipmentSelect.value, rows: [Object.fromEntries(failedHeaders.map((h, i) => [h, editedRow[i]]))] })
+            body: JSON.stringify({
+              equipmentType: equipmentSelect.value,
+              rows: [Object.fromEntries(failedHeaders.map((h, i) => [h, editedRow[i]]))]
+            })
           });
           const result = await resp.json();
+          hideSpinner(container);
           if (resp.ok && result.success && (!result.failedRows || result.failedRows.length === 0)) {
             statusDiv.textContent = "Row saved successfully.";
             failedRows.splice(idx, 1);
@@ -245,6 +265,7 @@ export function showEquipUpload(container) {
             statusDiv.textContent = "Row save failed. See error in table.";
           }
         } catch (err) {
+          hideSpinner(container);
           failedRows[idx].error = "Network/server error";
           failedTableDiv.innerHTML = createEditableFailedTable(failedHeaders, failedRows);
           addFailedRowHandlers();
@@ -253,6 +274,5 @@ export function showEquipUpload(container) {
       };
     });
   }
-
   resetUI();
 }
