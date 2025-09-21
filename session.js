@@ -1,4 +1,4 @@
-import { apiFetch } from './api-fetch.js';
+import { showSpinner, hideSpinner } from './spinner.js';
 
 export async function verifySession(container) {
   const token = localStorage.getItem('auth_token');
@@ -6,12 +6,12 @@ export async function verifySession(container) {
     container.innerHTML = '<p style="color:red;">Not signed in.</p>';
     return false;
   }
-
+  showSpinner(container);
   try {
-    const res = await apiFetch('https://se-on.smnglobal.workers.dev/api/session-verify', {
+    const res = await fetch('https://se-on.smnglobal.workers.dev/api/session-verify', {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token }
-    }, container);
+    });
 
     if (!res.ok) {
       const errData = await res.json();
@@ -20,8 +20,7 @@ export async function verifySession(container) {
     }
 
     const user = await res.json();
-
-    // Panel redirects/loads based on user role
+    // Role-based redirect/panel
     switch (user.role) {
       case 'user':
         import('./users.js').then(mod => mod.showUsers(container));
@@ -36,9 +35,10 @@ export async function verifySession(container) {
         container.innerHTML = `<p style="color:red;">Unrecognized role: ${user.role}</p>`;
     }
     return true;
-
   } catch (err) {
     container.innerHTML = `<p style="color:red;">Session check failed: ${err.message}</p>`;
     return false;
+  } finally {
+    hideSpinner(container);
   }
 }
