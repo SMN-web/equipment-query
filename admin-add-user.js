@@ -2,7 +2,7 @@ import { showSpinner, hideSpinner } from './spinner.js';
 
 export function showAddUser(container) {
   container.innerHTML = `
-    <h3>Add New User</h3>
+    <h3>Add New User</h3> 
     <form id="add-user-form" autocomplete="off">
       <input id="new-name" type="text" name="name" placeholder="Name" required />
       <input id="new-username" type="text" name="username" placeholder="Username" required />
