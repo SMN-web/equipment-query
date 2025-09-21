@@ -2,14 +2,20 @@ import { showSpinner, hideSpinner } from './spinner.js';
 
 export function showEquipList(container) {
   container.innerHTML = `
-    <div class="equip-list-topbar">
-      <select id="equipTableSelect" class="equip-table-selector">
-        <option value="crane">Crane Equipment</option>
-        <option value="manlift">Manlift Equipment</option>
-      </select>
-      <div class="export-btn-bar">
-        <button id="equip-csv-btn" class="csv-btn">Export CSV</button>
-        <button id="equip-pdf-btn" class="pdf-btn">Export PDF</button>
+    <div class="equip-list-toolbar">
+      <div class="list-section-buttons">
+        <!-- Section navigation left space intentionally for clarity and expansion -->
+      </div>
+      <div class="equip-table-controls">
+        <select id="equipTableSelect" class="equip-table-selector">
+          <option value="crane">Crane Equipment</option>
+          <option value="manlift">Manlift Equipment</option>
+        </select>
+        <span id="filtered-count" class="equip-filtered-count"></span>
+        <div class="export-btn-bar">
+          <button id="equip-csv-btn" class="csv-btn">Export CSV</button>
+          <button id="equip-pdf-btn" class="pdf-btn">Export PDF</button>
+        </div>
       </div>
     </div>
     <div id="equip-table-displayarea"></div>
@@ -19,7 +25,8 @@ export function showEquipList(container) {
   const displayArea = container.querySelector('#equip-table-displayarea');
   const csvBtn = container.querySelector('#equip-csv-btn');
   const pdfBtn = container.querySelector('#equip-pdf-btn');
-  let currentColumns = [], currentRows = [], currentTitle = '';
+  const filteredCount = container.querySelector('#filtered-count');
+  let currentColumns = [], currentRows = [], currentTitle = '', filteredRows = [];
 
   // Load initial
   loadCurrentTable();
@@ -36,26 +43,28 @@ export function showEquipList(container) {
       hideSpinner(container);
       if (!result.success) {
         displayArea.innerHTML = `<div class="equip-fetch-error">Error: ${result.error || 'Failed to fetch data'}.</div>`;
+        filteredCount.textContent = '';
         return;
       }
       currentColumns = result.columns.filter(c => c !== 'updaterUsername');
       currentRows = result.rows;
       currentTitle = (type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
-      renderTable(currentColumns, result.rows, displayArea, currentTitle);
+      filteredRows = [...currentRows];
+      renderTable(currentColumns, currentRows, displayArea, currentTitle);
+      updateFilteredCount(filteredRows.length, currentRows.length);
     })
     .catch(() => {
       hideSpinner(container);
       displayArea.innerHTML = `<div class="equip-fetch-error">Error fetching data.</div>`;
+      filteredCount.textContent = '';
     });
   }
 
   function renderTable(columns, data, box, title) {
-    let filteredRows = [...data];
-    let selectedRow = null;
-
+    filteredRows = [...data];
     box.innerHTML = `
       <div class="equip-table-container">
-        <table class="equip-list-table printable-table" id="equip-main-table">
+        <table class="equip-list-table" id="equip-main-table">
           <thead>
             <tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr>
             <tr>${columns.map((c, i) =>
@@ -63,12 +72,12 @@ export function showEquipList(container) {
             ).join('')}</tr>
           </thead>
           <tbody>
-            ${data.map((row, idx) => tableRowHTML(row, columns, idx)).join('')}
+            ${data.map(row => tableRowHTML(row, columns)).join('')}
           </tbody>
         </table>
       </div>
     `;
-    // Filter logic
+
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
     filterInputs.forEach(input => {
       input.addEventListener('input', function() {
@@ -82,28 +91,20 @@ export function showEquipList(container) {
           }
         });
         filteredRows = curRows;
-        box.querySelector('tbody').innerHTML = filteredRows.map((row, idx) => tableRowHTML(row, columns, idx)).join('');
-        // re-enable row click highlight:
+        box.querySelector('tbody').innerHTML = filteredRows.map(row => tableRowHTML(row, columns)).join('');
         enableRowHighlighting(box.querySelector('tbody'));
+        updateFilteredCount(filteredRows.length, data.length);
       });
     });
 
-    // Row highlighting for identification
     enableRowHighlighting(box.querySelector('tbody'));
 
-    // CSV Export
-    csvBtn.onclick = () => {
-      exportVisibleTableCSV(columns, filteredRows, title);
-    };
-
-    // PDF Export/Print
-    pdfBtn.onclick = () => {
-      printVisibleTable(columns, filteredRows, title);
-    };
+    csvBtn.onclick = () => exportVisibleTableCSV(columns, filteredRows, title);
+    pdfBtn.onclick = () => printVisibleTable(columns, filteredRows, title);
   }
 
-  function tableRowHTML(row, columns, idx) {
-    return `<tr class="zebra-${idx % 2}">${columns.map(col => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`;
+  function tableRowHTML(row, columns) {
+    return `<tr>${columns.map(col => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`;
   }
 
   function enableRowHighlighting(tbody) {
@@ -127,8 +128,8 @@ export function showEquipList(container) {
     setTimeout(() => window.URL.revokeObjectURL(url), 700);
   }
 
+  // PDF: with landscape A3, zebra striping, all columns, filter box hidden
   function printVisibleTable(columns, rows, title) {
-    // Build table HTML for printing
     let tableHTML = `
       <table class="printable-table">
         <thead>
@@ -136,23 +137,18 @@ export function showEquipList(container) {
         </thead>
         <tbody>
           ${rows.map((row, idx) =>
-            `<tr class="zebra-${idx % 2}">${columns.map(col => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`
+            `<tr style="background:${idx % 2 === 1 ? '#e7f5fc' : '#fff'}">${columns.map(col => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`
           ).join('')}
         </tbody>
       </table>
       <style>
         @media print {
-          @page {
-            size: A3 landscape;
-            margin: 1cm;
-          }
+          @page { size: A3 landscape; margin: 1cm; }
           body { font-size: 11pt; }
         }
         .printable-table { width:100%; border-collapse: collapse; font-size: 11pt; }
-        .printable-table th, .printable-table td { border: 1px solid #bbb; padding: 6px 14px; }
+        .printable-table th, .printable-table td { border: 1px solid #bbb; padding: 5px 14px; font-size:10pt;}
         .printable-table th { background: #c7f4fd; color: #194879; }
-        .printable-table tr.zebra-0 { background: #fafdff; }
-        .printable-table tr.zebra-1 { background: #e7f5fc; }
       </style>
     `;
     const popup = window.open('', '', 'width=1400,height=900,scrollbars=1');
@@ -160,11 +156,16 @@ export function showEquipList(container) {
       <html><head>
       <title>${title}</title>
       </head><body>
-      <h2 style="margin-bottom:15px;">${title}</h2>
+      <h2 style="margin-bottom:16px;">${title} (Total rows: ${rows.length})</h2>
       ${tableHTML}
       </body></html>
     `);
     popup.document.close();
     setTimeout(() => popup.print(), 400);
+  }
+
+  // Show "32 of 40" format
+  function updateFilteredCount(filtered, total) {
+    filteredCount.textContent = `Rows: ${filtered} of ${total}`;
   }
 }
