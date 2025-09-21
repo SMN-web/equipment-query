@@ -333,14 +333,28 @@ th {
 }
 
 /*equip-list*/
-.equip-list-topbar {
+
+/* ===== Toolbar & Controls ===== */
+.equip-list-toolbar {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.3em;
   align-items: center;
   margin-bottom: 18px;
-  gap: 1em;
-  flex-wrap: wrap;
+  justify-content: flex-start;
 }
+
+.list-section-buttons {
+  /* reserved for future extension: e.g., section tabs */
+}
+
+.equip-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.3em;
+  margin-left: 14px;
+}
+
 .equip-table-selector {
   font-size: 1.12em;
   padding: 8px 22px 8px 6px;
@@ -350,38 +364,58 @@ th {
   min-width: 178px;
   font-weight: 600;
   color: #194879;
+  margin-right: 13px;
 }
+
+.equip-filtered-count {
+  font-weight: 700;
+  color: #0079bb;
+  font-size: 1.08em;
+  margin-left: 0.7em;
+  margin-right: 0.7em;
+  min-width: 78px;
+  display: inline-block;
+}
+
 .export-btn-bar {
   display: flex;
-  gap:8px;
+  gap: 10px;
+  align-items: center;
 }
-button.csv-btn, button.pdf-btn {
+
+button.csv-btn,
+button.pdf-btn {
   color: #194879;
   background: #e0f7fa;
   border: 1.5px solid #6ebffb;
   border-radius: 8px;
   min-width: 112px;
   min-height: 39px;
-  font-size:1.1em;
+  font-size: 1.1em;
   font-weight: 700;
-  margin-left:6px;
-  margin-right:4px;
+  margin-left: 6px;
+  margin-right: 4px;
   box-shadow: 0 2px 7px #e5efff66;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background 0.13s;
+  transition: background 0.13s, border 0.13s;
 }
-button.csv-btn:hover, button.pdf-btn:hover {
+
+button.csv-btn:hover,
+button.pdf-btn:hover {
   background: #c7f4fd;
   border-color: #1ba3de;
 }
+
+/* ===== Table Container and Card ===== */
 .equip-table-container {
-  padding: 9px 5px 5px 5px;
   background: #fbfdff;
   border-radius: 12px;
   box-shadow: 0 0 0.5px #eafdff;
   overflow-x: auto;
+  padding: 9px 5px 5px 5px;
 }
+
 .equip-list-table {
   min-width: 1100px;
   border-collapse: collapse;
@@ -389,44 +423,77 @@ button.csv-btn:hover, button.pdf-btn:hover {
   font-size: 1em;
   background: #fafdff;
 }
+
+/* ===== Table Elements ===== */
 .equip-list-table th, .equip-list-table td {
-  padding: 0.6em 1.3em; 
+  padding: 0.6em 1.3em;
   text-align: left;
   border-bottom: 1px solid #e6e6e6;
   vertical-align: top;
   white-space: pre-line;
 }
+
 .equip-list-table th {
   position: sticky;
   top: 0;
   background: #eafdff;
   z-index: 3;
   font-weight: 600;
+  border-top: 1px solid #e6e6e6;
 }
+
+/* Filter & Table behaviors */
 .equip-list-table input.column-filter {
   width: 98%;
   padding: 3px 6px;
-  background: #f6fcfe; 
-  border:1px solid #e3eaf1; 
-  font-size:1em;
+  background: #f6fcfe;
+  border: 1px solid #e3eaf1;
+  font-size: 1em;
   border-radius: 4px;
   margin-bottom: 3px;
   margin-top: 2px;
   color: #104088;
 }
-.equip-list-table tr.zebra-0 { background: #fafdff; }
-.equip-list-table tr.zebra-1 { background: #e9f6fc; }
+
+/* Row highlight on click (portal, not print) */
 .equip-list-table tr.highlighted-row {
   background: #c6e8ff !important;
   transition: background 0.13s;
 }
+
+/* Error areas */
 .equip-fetch-error {
-  color:#c00;font-weight:500;padding:1em 0;
+  color: #c00;
+  font-weight: 500;
+  padding: 1em 0;
 }
-/* Hide filter row on print-out */
+
+/* ===== Print & Export Table ===== */
 @media print {
-  .column-filter { display:none !important; }
+  .column-filter { display: none !important; }
+  .equip-table-controls, .equip-list-toolbar, .export-btn-bar { display: none !important; }
 }
+
+/* ===== Print/PDF/Zebra coloring is handled inline in printable-table in JS ===== */
+
+/* Responsive refinement */
+@media (max-width: 900px) {
+  .equip-table-container {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .equip-list-table {
+    min-width: 550px;
+    font-size: 0.97em;
+  }
+  .equip-table-selector { min-width: 105px; font-size: 1em; }
+}
+
+/* Miscellaneous white background for container */
+body, #app, .root-wrapper, .admin-main-section {
+  background: #fafdff !important;
+}
+
 
 
 
