@@ -14,7 +14,8 @@ export function showEquipUpload(container) {
         <button id="uploadCsvBtn" type="button" disabled>Upload</button>
         <div id="csv-status"></div>
       </div>
-      <div id="equipment-table"><p>Uploaded CSV preview table will show here.</p></div>
+      <div id="equipment-table"></div>
+      <div id="failed-table" style="margin-top:1em"></div>
       <p class="demo-txt">CSV importer will be wired here.</p>
     </div>
   `;
@@ -24,35 +25,14 @@ export function showEquipUpload(container) {
   const uploadBtn = container.querySelector("#uploadCsvBtn");
   const statusDiv = container.querySelector("#csv-status");
   const tableDiv = container.querySelector("#equipment-table");
+  const failedTableDiv = container.querySelector("#failed-table");
 
   const columnsByEquipment = {
     crane: [
-      "plantNo",
-      "regNo",
-      "description",
-      "capacity",
-      "type",
-      "owner",
-      "train",
-      "location",
-      "engineer",
-      "riggerCHName",
-      "riggerPhNo",
-      "status",
+      "plantNo","regNo","description","capacity","type","owner","train","location","engineer","riggerCHName","riggerPhNo","status"
     ],
     manlift: [
-      "plantNo",
-      "regNo",
-      "description",
-      "length",
-      "type",
-      "owner",
-      "train",
-      "location",
-      "engineer",
-      "operatorName",
-      "operatorPhNo",
-      "status",
+      "plantNo","regNo","description","length","type","owner","train","location","engineer","operatorName","operatorPhNo","status"
     ],
   };
 
@@ -68,20 +48,30 @@ export function showEquipUpload(container) {
 
   function createTable(headers, rows) {
     let html = "<table><thead><tr>";
-    headers.forEach(h => (html += `<th>${h}</th>`));
+    headers.forEach(h => html += `<th>${h}</th>`);
     html += "</tr></thead><tbody>";
     rows.forEach(row => {
       html += "<tr>";
-      row.forEach(cell => {
-        html += `<td>${cell}</td>`;
-      });
+      row.forEach(cell => html += `<td>${cell}</td>`);
       html += "</tr>";
     });
     html += "</tbody></table>";
     return html;
   }
 
-  // Validate phone number (blank or international format with +)
+  function createFailedTable(headers, failedRows) {
+    let html = "<table style='border:2px solid #c00'><thead><tr>";
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += "<th>Error</th></tr></thead><tbody>";
+    failedRows.forEach(({row, error}) => {
+      html += "<tr>";
+      row.forEach(cell => html += `<td>${cell}</td>`);
+      html += `<td style='color:#c00'>${error}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    return html;
+  }
+
   function isValidPhoneNumber(phone) {
     if (!phone || phone.trim() === "") return true;
     return /^\+?[0-9\s\-()]{7,20}$/.test(phone);
@@ -94,11 +84,9 @@ export function showEquipUpload(container) {
     if (!map["regNo"] || !map["plantNo"] || !map["description"] || !map["owner"]) {
       return "Required fields (regNo, plantNo, description, owner) cannot be blank.";
     }
-
     if (!/^\d+$/.test(map["regNo"])) {
       return "regNo must be an integer.";
     }
-
     if (
       (equipmentType === "crane" && map["capacity"] && !/^\d+$/.test(map["capacity"])) ||
       (equipmentType === "manlift" && map["length"] && !/^\d+$/.test(map["length"]))
@@ -107,21 +95,20 @@ export function showEquipUpload(container) {
         ? "capacity must be an integer or blank."
         : "length must be an integer or blank.";
     }
-
     if (equipmentType === "crane" && !isValidPhoneNumber(map["riggerPhNo"])) {
       return "riggerPhNo must be blank or a valid phone number.";
     }
     if (equipmentType === "manlift" && !isValidPhoneNumber(map["operatorPhNo"])) {
       return "operatorPhNo must be blank or a valid phone number.";
     }
-
     return null;
   }
 
   function resetUI() {
     statusDiv.textContent = "";
     statusDiv.classList.remove("error");
-    tableDiv.innerHTML = "<p>Uploaded CSV preview table will show here.</p>";
+    tableDiv.innerHTML = "";
+    failedTableDiv.innerHTML = "";
     uploadBtn.textContent = "Upload";
     uploadBtn.disabled = !fileInput.files.length;
     container.parsedData = null;
@@ -148,9 +135,9 @@ export function showEquipUpload(container) {
       }
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = () => {
         try {
-          const text = e.target.result;
+          const text = reader.result;
           const data = parseCSV(text);
 
           if (data.length < 2) {
@@ -161,18 +148,43 @@ export function showEquipUpload(container) {
 
           const headers = data[0];
           if (!validateHeaders(headers, expectedColumns)) {
-            statusDiv.textContent = `CSV header mismatch. Expected columns: ${expectedColumns.join(
-              ", "
-            )}`;
+            statusDiv.textContent = `CSV header mismatch. Expected columns: ${expectedColumns.join(", ")}`;
             statusDiv.classList.add("error");
             return;
           }
 
           const rows = data.slice(1);
-          tableDiv.innerHTML = createTable(headers, rows);
-          statusDiv.textContent = `Successfully parsed ${rows.length} rows for equipment type '${equipmentType}'.`;
+          // Uniqueness checks in the upload file (before backend)
+          const regNoSet = new Set();
+          const plantNoSet = new Set();
+          const failedRows = [];
+          const validRows = [];
 
-          container.parsedData = { headers, rows, equipmentType };
+          for (let i = 0; i < rows.length; i++) {
+            const err = validateRow(rows[i], headers, equipmentType);
+            const reg = rows[i][headers.indexOf('regNo')];
+            const pln = rows[i][headers.indexOf('plantNo')];
+            if (regNoSet.has(reg)) {
+              failedRows.push({row: rows[i], error: "Duplicate regNo in file"});
+              continue;
+            }
+            if (plantNoSet.has(pln)) {
+              failedRows.push({row: rows[i], error: "Duplicate plantNo in file"});
+              continue;
+            }
+            if (err) {
+              failedRows.push({row: rows[i], error: err});
+            } else {
+              regNoSet.add(reg);
+              plantNoSet.add(pln);
+              validRows.push(rows[i]);
+            }
+          }
+
+          tableDiv.innerHTML = createTable(headers, validRows);
+          failedTableDiv.innerHTML = failedRows.length ? createFailedTable(headers, failedRows) : "";
+          statusDiv.textContent = `Valid rows: ${validRows.length}. Rows with errors: ${failedRows.length}`;
+          container.parsedData = { headers, rows: validRows, equipmentType, failedRows, origHeaders: headers };
 
           uploadBtn.textContent = "Save";
         } catch {
@@ -194,23 +206,13 @@ export function showEquipUpload(container) {
         return;
       }
 
-      for (let i = 0; i < rows.length; i++) {
-        const err = validateRow(rows[i], headers, equipmentType);
-        if (err) {
-          statusDiv.textContent = `Row ${i + 1} validation error: ${err}`;
-          statusDiv.classList.add("error");
-          return;
-        }
-      }
-
       statusDiv.textContent = "Saving data...";
       uploadBtn.disabled = true;
 
+      // Turn row arrays into objects
       const dataRows = rows.map(row => {
         const obj = {};
-        headers.forEach((h, idx) => {
-          obj[h] = row[idx];
-        });
+        headers.forEach((h, idx) => obj[h] = row[idx]);
         return obj;
       });
 
@@ -227,19 +229,33 @@ export function showEquipUpload(container) {
 
         const result = await resp.json();
 
-        if (resp.ok) {
-          statusDiv.textContent = `Data saved successfully. Inserted ${result.insertedCount} rows.`;
-          uploadBtn.disabled = true;
-          uploadBtn.textContent = "Saved";
+        // Always clear, always re-enable
+        tableDiv.innerHTML = "";
+        uploadBtn.textContent = "Upload";
+        uploadBtn.disabled = false;
+        fileInput.value = "";
+
+        if (resp.ok && result.success) {
+          if (result.failedRows && result.failedRows.length) {
+            failedTableDiv.innerHTML = createFailedTable(headers, result.failedRows);
+            statusDiv.textContent = `Inserted: ${result.insertedCount}. Failed: ${result.failedRows.length}`;
+          } else {
+            failedTableDiv.innerHTML = "";
+            statusDiv.textContent = `All rows inserted successfully.`;
+          }
         } else {
-          statusDiv.textContent = `Save failed: ${result.error || 'Unknown error'}`;
+          failedTableDiv.innerHTML = "";
+          statusDiv.textContent = `Server error: ${result.error || 'Unknown error'}`;
           statusDiv.classList.add("error");
-          uploadBtn.disabled = false;
         }
       } catch (err) {
-        statusDiv.textContent = "Network or server error during save.";
-        statusDiv.classList.add("error");
+        tableDiv.innerHTML = "";
+        failedTableDiv.innerHTML = "";
+        uploadBtn.textContent = "Upload";
         uploadBtn.disabled = false;
+        fileInput.value = "";
+        statusDiv.textContent = "Network/server error during save.";
+        statusDiv.classList.add("error");
       }
     }
   });
