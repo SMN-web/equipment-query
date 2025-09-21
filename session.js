@@ -1,28 +1,44 @@
-export async function sessionRedirect(container, expectedRole, options = {}) {
-  const { noRedirect = false } = options;
+import { apiFetch } from './api-fetch.js';
 
-  container.innerHTML += `<p>Checking saved cookies...</p>`;
+export async function verifySession(container) {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    container.innerHTML = '<p style="color:red;">Not signed in.</p>';
+    return false;
+  }
 
   try {
-    const res = await fetch('https://se-on.smnglobal.workers.dev/api/session-verify', {
+    const res = await apiFetch('https://se-on.smnglobal.workers.dev/api/session-verify', {
       method: 'GET',
-      credentials: 'include',
-    });
+      headers: { 'Authorization': 'Bearer ' + token }
+    }, container);
 
     if (!res.ok) {
       const errData = await res.json();
-      throw new Error(errData.error || 'Session verification failed');
+      container.innerHTML = `<p style="color:red;">Session error: ${errData.error || res.statusText}</p>`;
+      return false;
     }
 
-    const userInfo = await res.json();
+    const user = await res.json();
 
-    container.innerHTML += `<p style="color:green;">Cookies retrieved successfully! Welcome, ${userInfo.username} (Role: ${userInfo.role})</p>`;
-
-    // No routing logic here; just return true
+    // Panel redirects/loads based on user role
+    switch (user.role) {
+      case 'user':
+        import('./users.js').then(mod => mod.showUsers(container));
+        break;
+      case 'admin':
+        import('./admin.js').then(mod => mod.showAdminPanel(container));
+        break;
+      case 'moderator':
+        import('./moderator.js').then(mod => mod.showModeratorPanel(container));
+        break;
+      default:
+        container.innerHTML = `<p style="color:red;">Unrecognized role: ${user.role}</p>`;
+    }
     return true;
 
   } catch (err) {
-    container.innerHTML += `<p style="color:red;">Session verification failed: ${err.message}</p>`;
+    container.innerHTML = `<p style="color:red;">Session check failed: ${err.message}</p>`;
     return false;
   }
 }
