@@ -14,29 +14,31 @@ export function showUserLogs(container) {
     <div id="pagination" style="margin-top:12px; text-align:center;"></div>
   `;
 
-  function parseDBDatetimeAsUTC(dt) {
+  // Local date parser and formatter
+  function parseDBDatetimeAsLocal(dt) {
     const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(dt);
     if (!m) return new Date(dt);
-    return new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+    // Use local time here, so no Date.UTC
+    return new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5], +m[6]);
   }
   function formatDatetime(dtString) {
     if (!dtString) return '';
-    const d = parseDBDatetimeAsUTC(dtString);
-    const day = d.getUTCDate().toString().padStart(2, '0');
-    const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-    const year = d.getUTCFullYear().toString().substr(2,2);
-    let hour = d.getUTCHours() % 12 || 12;
+    const d = parseDBDatetimeAsLocal(dtString);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear().toString().substr(2,2);
+    let hour = d.getHours() % 12 || 12;
     hour = hour.toString().padStart(2, '0');
-    const min = d.getUTCMinutes().toString().padStart(2, '0');
-    const ampm = d.getUTCHours() < 12 ? 'AM' : 'PM';
+    const min = d.getMinutes().toString().padStart(2, '0');
+    const ampm = d.getHours() < 12 ? 'AM' : 'PM';
     return `${day}-${month}-${year}, ${hour}:${min} ${ampm}`;
   }
   function timeAgo(dateStr) {
     if (!dateStr) return "";
-    const then = parseDBDatetimeAsUTC(dateStr);
+    const then = parseDBDatetimeAsLocal(dateStr);
     const now = new Date();
     const seconds = Math.floor((now - then) / 1000);
-    if (isNaN(seconds)) return "";
+    if (isNaN(seconds) || seconds < 0) return "";
     if (seconds < 60) return "just now";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -82,26 +84,31 @@ export function showUserLogs(container) {
     const cardDiv = container.querySelector("#user-log-cards");
     cardDiv.innerHTML = users.length === 0
       ? '<div style="padding:24px;">No users found.</div>'
-      : users.map((user, idx) => `
+      : users.map((user, idx) => {
+          let infoLines = ``;
+          if (user.currentStatus === 'logged_out') {
+            infoLines += `<div><span style="font-weight:600;">Logout time:</span> ${user.logoutAt ? formatDatetime(user.logoutAt) : ''}</div>`;
+            infoLines += `<div><span style="font-weight:600;">Status:</span>
+              <span style="color:#d33; font-weight:600;">Logged out</span>
+              </div>`;
+          } else {
+            infoLines += `<div><span style="font-weight:600;">Login time:</span> ${user.loginAt ? formatDatetime(user.loginAt) : ''}</div>`;
+            infoLines += `<div><span style="font-weight:600;">Status:</span>
+              <span style="color:#080; font-weight:600;">Last active ${user.lastActiveAt ? timeAgo(user.lastActiveAt) : ''}</span>
+              </div>`;
+          }
+          return `
         <div style="display:flex; align-items:center; box-shadow:0 2px 8px #eee; border-radius:8px; margin-bottom:10px; padding:16px;">
           <div style="font-weight:700; font-size:20px; width:30px; margin-right:10px;">${(currentPage - 1) * PAGE_SIZE + idx + 1}</div>
           <div style="flex:1;">
             <div><span style="font-weight:600;">Name:</span> ${user.name}</div>
             <div><span style="font-weight:600;">Username:</span> ${user.username}</div>
             <div><span style="font-weight:600;">Role:</span> ${user.role}</div>
-            <div><span style="font-weight:600;">Created on:</span> ${formatDatetime(user.createdAt)}</div>
-            <div><span style="font-weight:600;">Login time:</span> ${formatDatetime(user.loginAt)}</div>
-            <div><span style="font-weight:600;">Logout time:</span> ${user.logoutAt ? formatDatetime(user.logoutAt) : ''}</div>
-            <div><span style="font-weight:600;">Status:</span>
-              <span style="color:${user.currentStatus === 'logged_out' ? '#d33' : '#080'}">
-                ${user.currentStatus === 'logged_out'
-                  ? "Logged out"
-                  : (user.lastActiveAt ? "Last active " + timeAgo(user.lastActiveAt) : "Status unknown")}
-              </span>
-            </div>
+            ${infoLines}
           </div>
         </div>
-      `).join('');
+        `;
+        }).join('');
     renderPagination();
   }
 
