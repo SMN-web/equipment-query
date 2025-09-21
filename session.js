@@ -1,9 +1,10 @@
 import { showSpinner, hideSpinner } from './spinner.js';
+import { showLogin } from './login.js';
 
 export async function verifySession(container) {
   const token = localStorage.getItem('auth_token');
   if (!token) {
-    container.innerHTML = '<p style="color:red;">Not signed in.</p>';
+    showLogin(container);
     return false;
   }
   showSpinner(container);
@@ -13,14 +14,18 @@ export async function verifySession(container) {
       headers: { 'Authorization': 'Bearer ' + token }
     });
 
+    // On any error (including signature change), clear token and redirect to login
     if (!res.ok) {
-      const errData = await res.json();
-      container.innerHTML = `<p style="color:red;">Session error: ${errData.error || res.statusText}</p>`;
+      localStorage.removeItem('auth_token');
+      showLogin(container);
       return false;
     }
-
     const user = await res.json();
-    // Role-based redirect/panel
+    if (user.error) {
+      localStorage.removeItem('auth_token');
+      showLogin(container);
+      return false;
+    }
     switch (user.role) {
       case 'user':
         import('./users.js').then(mod => mod.showUsers(container));
@@ -32,11 +37,13 @@ export async function verifySession(container) {
         import('./moderator.js').then(mod => mod.showModeratorPanel(container));
         break;
       default:
-        container.innerHTML = `<p style="color:red;">Unrecognized role: ${user.role}</p>`;
+        localStorage.removeItem('auth_token');
+        showLogin(container);
     }
     return true;
   } catch (err) {
-    container.innerHTML = `<p style="color:red;">Session check failed: ${err.message}</p>`;
+    localStorage.removeItem('auth_token');
+    showLogin(container);
     return false;
   } finally {
     hideSpinner(container);
