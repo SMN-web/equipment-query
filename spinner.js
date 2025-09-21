@@ -9,27 +9,32 @@ export function showSpinner(container) {
       transition:opacity 0.2s;
     `;
     el.innerHTML = `
-      <div class="spinner-bounce">
-        <div class="double-bounce1"></div>
-        <div class="double-bounce2"></div>
+      <div class="spinner-dots">
+        <div></div><div></div><div></div>
       </div>
       <style>
-        .spinner-bounce {
-          width: 54px; height: 54px; position: relative;
+        .spinner-dots {
+          display: flex; gap: 15px;
         }
-        .double-bounce1, .double-bounce2 {
-          width: 100%; height: 100%; border-radius: 50%;
-          background: linear-gradient(90deg,#38bdfa 10%,#0e6abc 90%);
-          opacity: 0.6; position: absolute; top: 0; left: 0;
-          animation: bounce 2.0s infinite ease-in-out;
+        .spinner-dots div {
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          background: linear-gradient(90deg,#38bdfa 40%,#0e6abc 80%);
+          opacity: 0.75;
+          animation: pulse 0.9s infinite cubic-bezier(.6,.1,.2,1);
         }
-        .double-bounce2 {
-          animation-delay: -1.0s;
-          background: linear-gradient(90deg,#78e2ff 10%,#4e7aff 90%);
+        .spinner-dots div:nth-child(2) {
+          animation-delay: .3s;
+          background: linear-gradient(90deg,#78e2ff 40%,#6498ff 80%);
         }
-        @keyframes bounce {
-          0%, 100% { transform: scale(0.0); }
-          50% { transform: scale(1.0); }
+        .spinner-dots div:nth-child(3) {
+          animation-delay: .6s;
+          background: linear-gradient(90deg, #43e285 40%, #b7ffc7 80%);
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.65;}
+          50% { transform: scale(1.35); opacity: 1;}
+          100% { transform: scale(1); opacity: 0.65;}
         }
       </style>
     `;
