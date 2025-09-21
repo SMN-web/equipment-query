@@ -42,7 +42,3 @@ export function hideSpinner(container) {
   let el = container.querySelector('.loadingOverlay');
   if (el) el.style.display = 'none';
 }
-
-export function delay(ms) {
-  return new Promise(res => setTimeout(res, ms));
-}
