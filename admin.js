@@ -13,7 +13,6 @@ export function showAdminPanel(container) {
     </div>
   `;
 
-  // Call heartbeat once, every time panel loads
   function sendHeartbeat(token) {
     if (!token) return;
     fetch("https://he-be.smnglobal.workers.dev/api/heartbeat", {
@@ -28,7 +27,15 @@ export function showAdminPanel(container) {
   }
 
   const token = localStorage.getItem("auth_token");
-  sendHeartbeat(token); // Send on reload
+  // Send heartbeat immediately on panel load
+  sendHeartbeat(token);
+
+  // Send heartbeat every 60 seconds while admin panel is loaded
+  const heartbeatInterval = setInterval(() => sendHeartbeat(token), 60000);
+
+  // Clear heartbeat on logout or when navigating away, if needed
+  window.addEventListener("logout", () => clearInterval(heartbeatInterval));
+  // Optionally, tie cleanup to some SPA navigation event if present
 
   // ... Tab logic as before ...
   loadAdminSubSection('user-section', container);
