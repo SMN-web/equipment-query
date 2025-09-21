@@ -14,16 +14,13 @@ export function showUserLogs(container) {
     <div id="pagination" style="margin-top:12px; text-align:center;"></div>
   `;
 
-  // Local date parser and formatter
-  function parseDBDatetimeAsLocal(dt) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(dt);
-    if (!m) return new Date(dt);
-    // Use local time here, so no Date.UTC
-    return new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+  function parseISOToLocal(dt) {
+    // Safe for all ISO strings like 2025-09-21T15:35:25.431Z
+    return dt ? new Date(dt) : null;
   }
   function formatDatetime(dtString) {
-    if (!dtString) return '';
-    const d = parseDBDatetimeAsLocal(dtString);
+    const d = parseISOToLocal(dtString);
+    if (!d) return '';
     const day = d.getDate().toString().padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear().toString().substr(2,2);
@@ -34,8 +31,8 @@ export function showUserLogs(container) {
     return `${day}-${month}-${year}, ${hour}:${min} ${ampm}`;
   }
   function timeAgo(dateStr) {
-    if (!dateStr) return "";
-    const then = parseDBDatetimeAsLocal(dateStr);
+    const then = parseISOToLocal(dateStr);
+    if (!then) return "";
     const now = new Date();
     const seconds = Math.floor((now - then) / 1000);
     if (isNaN(seconds) || seconds < 0) return "";
@@ -114,7 +111,7 @@ export function showUserLogs(container) {
 
   function renderPagination() {
     const pagDiv = container.querySelector("#pagination");
-    const pageCount = Math.ceil(total / PAGE_SIZE);
+    const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
     pagDiv.innerHTML = '';
     for (let i = 1; i <= pageCount; i++) {
       const btn = document.createElement('button');
