@@ -13,10 +13,24 @@ export function showAdminPanel(container) {
     </div>
   `;
 
+  // Heartbeat function
+  function sendHeartbeat(token) {
+    if (!token) return;
+    fetch("https://he-be.smnglobal.workers.dev/api/heartbeat", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token }
+    });
+  }
+
+  // Start heartbeat timer
+  const token = localStorage.getItem("auth_token");
+  let heartbeatTimer = setInterval(() => sendHeartbeat(token), 60000); // every 60 seconds
+
+  // Clear heartbeat on logout
+  window.addEventListener("logout", () => clearInterval(heartbeatTimer));
+  
   // Load default tab
   loadAdminSubSection('user-section', container);
-
-  // Tab switching
   container.querySelectorAll('.main-tab').forEach(btn => {
     btn.addEventListener('click', function() {
       container.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
@@ -27,7 +41,6 @@ export function showAdminPanel(container) {
   });
 }
 
-// Dynamically import and render the correct dashboard section
 function loadAdminSubSection(section, container) {
   const contentDiv = container.querySelector('#admin-main-content');
   if (section === 'user-section') {
