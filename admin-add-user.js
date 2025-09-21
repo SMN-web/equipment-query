@@ -1,3 +1,5 @@
+import { showSpinner, hideSpinner } from './spinner.js';
+
 export function showAddUser(container) {
   container.innerHTML = `
     <h3>Add New User</h3>
@@ -25,7 +27,7 @@ export function showAddUser(container) {
     </div>
   `;
 
-  // Modal CSS (add to <head> or main style.css)
+  // Modal CSS (can add to <head> or main style.css)
   const style = document.createElement('style');
   style.innerHTML = `
     .modal.hidden { display: none; }
@@ -78,7 +80,9 @@ export function showAddUser(container) {
 
   modalConfirm.addEventListener('click', async function() {
     modal.classList.add('hidden');
-    msg.textContent = "Submitting...";
+    msg.textContent = "";
+    showSpinner(container);
+
     const token = localStorage.getItem('auth_token');
     const body = {
       name: form['new-name'].value.trim(),
@@ -105,6 +109,8 @@ export function showAddUser(container) {
       form.reset();
     } catch (err) {
       msg.textContent = "Error: " + err.message;
+    } finally {
+      hideSpinner(container);
     }
   });
 }
