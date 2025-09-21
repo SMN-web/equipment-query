@@ -168,6 +168,80 @@ h4 { margin-top: 24px; }
   .login-card, .panel { width: 98vw; padding: 24px 2vw 22px 2vw;}
 }
 
+/* Add-User Card Styles */
+#add-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-bottom: 8px;
+}
+#add-user-form input, #add-user-form select {
+  padding: 10px 12px;
+  border: 1px solid #dde4ed;
+  border-radius: 7px;
+  background: #f6f8fb;
+  font-size: 15px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+#add-user-form input:focus, #add-user-form select:focus {
+  border-color: #38bdfa;
+  background: #fafdfe;
+}
+
+/* Feedback/Error Message */
+#add-user-msg {
+  min-height: 19px;
+  margin-top: 9px;
+  font-size: 14px;
+  color: #d44d3d;
+}
+
+/* Modal Styles */
+.modal.hidden { display: none; }
+.modal {
+  position: fixed;
+  top:0; left:0;
+  width:100vw; height:100vh;
+  background:rgba(34,39,56,0.38);
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999;
+}
+.modal-content {
+  background:#fff;
+  border-radius:14px;
+  padding:31px 26px;
+  box-shadow:0 7px 32px #b4c8f344;
+  min-width: 300px; max-width: 94vw;
+}
+.modal-content h4 {
+  margin-bottom:16px;
+  font-size: 18px;
+  font-weight: 600;
+}
+#modal-details div {
+  margin: 7px 0;
+  font-size: 15px;
+}
+.modal-content button {
+  margin:14px 9px 0 0;
+  padding:9px 22px;
+  border-radius:8px;
+  border:none;
+  font-size: 15px;
+  cursor:pointer;
+  font-weight: 500;
+}
+.modal-confirm { background: #44b2fa; color:#fff; }
+.modal-cancel { background: #e2e7ee; color:#333; }
+.modal-confirm:hover { background: #2196f3; }
+.modal-cancel:hover { background: #c9d8ea; }
+
+@media (max-width: 520px) {
+  .modal-content { padding:21px 6vw; }
+}
+
+
 .demo-card {
   background: #eef6fd;
   border-radius: 11px;
