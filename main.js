@@ -11,11 +11,8 @@ function initApp() {
     verifySession(appDiv);
   }
 }
-
-// Add a logout handler
 window.logout = function() {
   localStorage.removeItem('auth_token');
   location.reload();
 };
-
 window.addEventListener('load', initApp);
