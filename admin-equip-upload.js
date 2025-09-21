@@ -156,7 +156,7 @@ export function showEquipUpload(container) {
 
       try {
         const token = localStorage.getItem('auth_token');
-        const resp = await fetch('https://your-worker-domain/api/equipment', {
+        const resp = await fetch('https://ad-eq-up.smnglobal.workers.dev/api/equipment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
