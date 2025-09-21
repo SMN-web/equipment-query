@@ -1,4 +1,4 @@
-import { apiFetch } from './api-fetch.js';
+import { showSpinner, hideSpinner } from './spinner.js';
 
 export function showLogin(container) {
   container.innerHTML = `
@@ -21,6 +21,7 @@ export function showLogin(container) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorDiv.textContent = '';
+    showSpinner(container);
 
     const payload = {
       usernameOrEmail: form.usernameOrEmail.value.trim(),
@@ -28,23 +29,25 @@ export function showLogin(container) {
     };
 
     try {
-      const res = await apiFetch('https://lo-in.smnglobal.workers.dev/api/login', {
+      const res = await fetch('https://lo-in.smnglobal.workers.dev/api/login', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' }
-      }, container);
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
 
       if (data.token) {
         localStorage.setItem('auth_token', data.token);
-        location.reload(); // Reload to trigger panel loading
+        location.reload();
       } else {
         errorDiv.textContent = 'Login response missing token.';
       }
     } catch (err) {
       errorDiv.textContent = err.message;
+    } finally {
+      hideSpinner(container);
     }
   });
 }
