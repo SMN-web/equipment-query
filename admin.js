@@ -13,23 +13,24 @@ export function showAdminPanel(container) {
     </div>
   `;
 
-  // Heartbeat function
+  // Call heartbeat once, every time panel loads
   function sendHeartbeat(token) {
     if (!token) return;
     fetch("https://he-be.smnglobal.workers.dev/api/heartbeat", {
       method: "POST",
       headers: { "Authorization": "Bearer " + token }
-    });
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.ok) console.error("Heartbeat error:", data.error || data);
+      else console.log("Heartbeat success");
+    }).catch(err => console.error("Heartbeat network error:", err));
   }
 
-  // Start heartbeat timer
   const token = localStorage.getItem("auth_token");
-  let heartbeatTimer = setInterval(() => sendHeartbeat(token), 60000); // every 60 seconds
+  sendHeartbeat(token); // Send on reload
 
-  // Clear heartbeat on logout
-  window.addEventListener("logout", () => clearInterval(heartbeatTimer));
-  
-  // Load default tab
+  // ... Tab logic as before ...
   loadAdminSubSection('user-section', container);
   container.querySelectorAll('.main-tab').forEach(btn => {
     btn.addEventListener('click', function() {
