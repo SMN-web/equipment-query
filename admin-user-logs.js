@@ -93,8 +93,10 @@ export function showUserLogs(container) {
             <div><span style="font-weight:600;">Login time:</span> ${formatDatetime(user.loginAt)}</div>
             <div><span style="font-weight:600;">Logout time:</span> ${user.logoutAt ? formatDatetime(user.logoutAt) : ''}</div>
             <div><span style="font-weight:600;">Status:</span>
-              <span style="color:${user.logoutAt ? '#d33' : '#080'}">
-                ${user.logoutAt ? `Last active log out` : ("Last active " + timeAgo(user.lastActiveAt))}
+              <span style="color:${user.currentStatus === 'logged_out' ? '#d33' : '#080'}">
+                ${user.currentStatus === 'logged_out'
+                  ? "Logged out"
+                  : (user.lastActiveAt ? "Last active " + timeAgo(user.lastActiveAt) : "Status unknown")}
               </span>
             </div>
           </div>
