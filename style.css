@@ -15,15 +15,12 @@ body {
   display: flex;
   flex-direction: column;
 }
-.login-card h2 {
-  margin-bottom: 18px;
-  font-weight: 600;
-}
-.login-card label { 
-  display: block; margin-top: 10px; font-size: 14px; color: #456091;
-}
+.login-card h2 { margin-bottom: 18px; font-weight: 600; }
+.login-card label { display: block; margin-top: 10px; font-size: 14px; color: #456091; }
 .login-card input {
-  width: 100%; padding: 10px; margin: 5px 0 12px 0;
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0 12px 0;
   border: 1px solid #dde4ed;
   border-radius: 7px;
   background: #f6f8fb;
