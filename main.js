@@ -1,20 +1,21 @@
 import { showLogin } from './login.js';
-// import { sessionRedirect } from './session.js'; // not used initially
+import { verifySession } from './session.js';
 
 const appDiv = document.getElementById('app');
 
-function router() {
-  const hash = window.location.hash || '#login';
-
-  // Initially, always show login page without verifying token or redirecting
-  if (hash === '#login') {
+function initApp() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
     showLogin(appDiv);
   } else {
-    // For now, prevent redirects: always show login on any other hash
-    window.location.hash = '#login';
+    verifySession(appDiv);
   }
 }
 
-window.addEventListener('hashchange', router);
-window.addEventListener('load', router);
-router();
+// Add a logout handler
+window.logout = function() {
+  localStorage.removeItem('auth_token');
+  location.reload();
+};
+
+window.addEventListener('load', initApp);
