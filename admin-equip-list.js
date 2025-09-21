@@ -1,6 +1,5 @@
 import { showSpinner, hideSpinner } from './spinner.js';
 
-// Human-friendly headers
 const headerLabels = {
   "slNo": "Sl. No.",
   "plantNo": "Plant No.",
@@ -24,7 +23,6 @@ const headerLabels = {
   "updaterName": "Updated By"
 };
 
-// Local date as "01-Sep-25, 09:55 AM"
 function formatLocalDateString(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -38,7 +36,6 @@ function formatLocalDateString(iso) {
   return `${dd}-${mon}-${yy}, ${hr}:${min} ${ampm}`;
 }
 
-// Prepare columns (insert Sl. No. as first, ensure Expiry Date is present)
 function buildColumns(rawCols) {
   const baseCols = [...rawCols];
   if (!baseCols.includes('expiryDate')) baseCols.push('expiryDate');
@@ -49,17 +46,14 @@ function buildColumns(rawCols) {
 export function showEquipList(container) {
   container.innerHTML = `
     <div class="equip-list-toolbar">
-      <div class="list-section-buttons"></div>
-      <div class="equip-table-controls">
-        <select id="equipTableSelect" class="equip-table-selector">
+      <div class="equip-table-controls small">
+        <select id="equipTableSelect" class="equip-table-selector small">
           <option value="crane">Crane Equipment</option>
           <option value="manlift">Manlift Equipment</option>
         </select>
-        <span id="filtered-count" class="equip-filtered-count"></span>
-        <div class="export-btn-bar">
-          <button id="equip-csv-btn" class="csv-btn">Export CSV</button>
-          <button id="equip-pdf-btn" class="pdf-btn">Export PDF</button>
-        </div>
+        <span id="filtered-count" class="equip-filtered-count small"></span>
+        <button id="equip-csv-btn" class="csv-btn small">CSV</button>
+        <button id="equip-pdf-btn" class="pdf-btn small">PDF</button>
       </div>
     </div>
     <div id="equip-table-displayarea"></div>
@@ -88,11 +82,11 @@ export function showEquipList(container) {
         filteredCount.textContent = '';
         return;
       }
-      // Build columns, including serial & expiry
+      // Assign a _fixed serial number_ for each original row
       let cols = result.columns.filter(c => c !== 'updaterUsername');
       cols = buildColumns(cols);
       currentColumns = cols;
-      // Assign initial serials
+      // Each row gets a slNo value based on its position in the raw, unfiltered DB order
       currentRows = result.rows.map((row, i) => ({...row, slNo: i + 1}));
       currentTitle = (type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
       filteredRows = [...currentRows];
@@ -107,7 +101,8 @@ export function showEquipList(container) {
   }
 
   function renderTable(columns, data, box, title) {
-    filteredRows = data.map((row, i) => ({...row, slNo: i+1}));
+    // .slNo is now fixed for initial DB ordering!
+    filteredRows = [...data];
     box.innerHTML = `
       <div class="equip-table-container">
         <table class="equip-list-table" id="equip-main-table">
@@ -118,11 +113,12 @@ export function showEquipList(container) {
             ).join('')}</tr>
           </thead>
           <tbody>
-            ${filteredRows.map((row, idx) => tableRowHTML(row, columns, idx)).join('')}
+            ${filteredRows.map(row => tableRowHTML(row, columns)).join('')}
           </tbody>
         </table>
       </div>
     `;
+
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
     filterInputs.forEach(input => {
       input.addEventListener('input', function() {
@@ -135,8 +131,9 @@ export function showEquipList(container) {
             );
           }
         });
-        filteredRows = curRows.map((row, i) => ({...row, slNo: i + 1}));
-        box.querySelector('tbody').innerHTML = filteredRows.map((row, idx) => tableRowHTML(row, columns, idx)).join('');
+        // **Do NOT renumber slNo** here! Keep from currentRows
+        filteredRows = curRows;
+        box.querySelector('tbody').innerHTML = filteredRows.map(row => tableRowHTML(row, columns)).join('');
         enableRowHighlighting(box.querySelector('tbody'));
         updateFilteredCount(filteredRows.length, data.length);
       });
@@ -147,8 +144,7 @@ export function showEquipList(container) {
     pdfBtn.onclick = () => printVisibleTable(columns, filteredRows, title);
   }
 
-  function tableRowHTML(row, columns, idx) {
-    // These date columns: show as formatted local time
+  function tableRowHTML(row, columns) {
     const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     return `<tr>${columns.map(col => {
       if (col === 'slNo') return `<td>${row.slNo}</td>`;
@@ -167,13 +163,12 @@ export function showEquipList(container) {
   }
 
   function exportVisibleTableCSV(columns, rows, title) {
-    // Dates: export in ISO for Excel compatibility
     const csvHeaders = columns.map(c => headerLabels[c] || c);
     const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     let csv = csvHeaders.join(',') + '\n' +
-      rows.map((row, i) =>
+      rows.map(row =>
         columns.map(col =>
-          `"${(col==='slNo' ? (row.slNo || i+1)
+          `"${(col==='slNo' ? row.slNo
             : (dateCols.includes(col)
               ? (row[col] ? new Date(row[col]).toISOString().replace('T',' ').slice(0,16) : '')
               : (row[col] ?? '')
@@ -191,7 +186,6 @@ export function showEquipList(container) {
   }
 
   function printVisibleTable(columns, rows, title) {
-    // Dates for print in local human format, zebra-row in PDF only
     const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     let tableHTML = `
       <table class="printable-table">
@@ -202,7 +196,7 @@ export function showEquipList(container) {
           ${rows.map((row, idx) =>
             `<tr${idx % 2 === 1 ? ' class="zebra-row"' : ''}>${
               columns.map(col =>
-                `<td>${col==='slNo' ? (row.slNo || idx+1)
+                `<td>${col==='slNo' ? row.slNo
                   : (dateCols.includes(col) ? formatLocalDateString(row[col]) : row[col] ?? '')}</td>`
               ).join('')
             }</tr>`
@@ -215,17 +209,17 @@ export function showEquipList(container) {
           body { font-size: 11pt; }
         }
         .printable-table { width:100%; border-collapse: collapse; font-size: 11pt; }
-        .printable-table th, .printable-table td { border: 1px solid #bbb; padding: 5px 14px; font-size:10pt;}
+        .printable-table th, .printable-table td { border: 1px solid #bbb; padding: 4px 7px; font-size:10pt;}
         .printable-table th { background: #c7f4fd; color: #194879; }
         .printable-table tr.zebra-row { background: #e7f5fc; }
       </style>
     `;
-    const popup = window.open('', '', 'width=1400,height=900,scrollbars=1');
+    const popup = window.open('', '', 'width=1100,height=700,scrollbars=1');
     popup.document.write(`
       <html><head>
       <title>${title}</title>
       </head><body>
-      <h2 style="margin-bottom:16px;">${title} (Total rows: ${rows.length})</h2>
+      <h2 style="margin-bottom:13px;font-size:1.16em;">${title} (Total rows: ${rows.length})</h2>
       ${tableHTML}
       </body></html>
     `);
