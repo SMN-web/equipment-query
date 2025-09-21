@@ -5,6 +5,8 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* =========== LOGIN CARD =========== */
 .login-card {
   width: 340px;
   margin: 12vh auto;
@@ -38,8 +40,7 @@ body {
   color: #fff; border: none; border-radius: 8px;
   font-size: 16px; font-weight: 500;
   letter-spacing: 1px;
-  cursor: pointer;
-  margin-top: 14px;
+  cursor: pointer; margin-top: 14px;
   box-shadow: 0 2px 8px #bbe0fc11;
   transition: background 0.15s;
 }
@@ -51,6 +52,118 @@ body {
   margin-top: 8px;
   font-size: 14px;
 }
+
+/* =========== PANEL CARD BASE =========== */
+.panel {
+  max-width: 800px;
+  margin: 10vh auto 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 28px 6px #dde7ee44;
+  padding: 36px 30px 32px 30px;
+}
+
+h2, h3, h4 { margin: 0 0 10px 0; font-weight: 600; }
+h4 { margin-top: 24px; }
+
+.main-tab-buttons, .sub-tab-buttons {
+  margin: 30px 0 12px 0;
+  display: flex; gap: 14px;
+}
+.main-tab, .user-subtab, .crane-subtab, .manlift-subtab, .rigging-subtab {
+  padding: 8px 18px;
+  background: #def2ff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.main-tab.active,
+.user-subtab.active,
+.crane-subtab.active,
+.manlift-subtab.active,
+.rigging-subtab.active {
+  background: linear-gradient(90deg,#38bdfa 10%,#0e6abc 80%);
+  color: #fff;
+  font-weight: 500;
+}
+
+.user-subsection, .crane-subsection, .manlift-subsection, .rigging-subsection,
+.equip-subsection { margin-top: 24px; }
+.hidden { display: none !important; }
+
+.logout-btn {
+  margin-top: 24px;
+  background: #e34a4a;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 10px 32px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #f2c0c011;
+}
+.logout-btn:hover { background: #c43333; }
+
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+
+.csv-upload-box, .dropdown-wrapper { margin-bottom: 24px; }
+
+.download-menu {
+  background: #eaf3fb; border-radius: 11px; padding: 8px; margin: 8px 0 0 0;
+  display: none; position: absolute; right: 0;
+  box-shadow: 0 3px 12px #d2e4ed44;
+}
+.download-menu li { padding: 7px 18px; cursor: pointer; }
+.download-menu li:hover { background: #caebff; }
+
+.user-log-list { list-style: none; padding: 0; margin: 0; }
+.user-log-list li { display: flex; gap: 28px; padding: 7px 0; border-bottom: 1px solid #eef4fa;}
+.log-username { font-weight: 500; }
+.log-role, .log-status, .log-lastseen { font-size: 14px; color: #456091;}
+
+/* =========== Coming Soon =========== */
+.coming-soon-card {
+  background: #f3f9fd; border-radius: 9px; margin: 24px 0 0 0;
+  padding: 37px 24px; text-align: center; color: #255b90;
+  font-size: 19px; 
+}
+
+/* =========== Misc =========== */
+.arrow { font-size: 16px; color: #44b2fa; margin-left: 5px; }
+.equip-menu-group { font-size: 18px; margin: 18px 0 2px 0; cursor: pointer; }
+.equip-submenu button { margin: 2px 12px 6px 0; font-size: 15px; }
+
+/* =========== Loader/Spinner =========== */
+.loadingOverlay {
+  position:fixed;top:0;left:0;width:100vw;height:100vh;
+  background:rgba(245,248,250,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;
+  transition:opacity 0.2s;
+}
+.spinner-dots {
+  display: flex; gap: 15px;
+}
+.spinner-dots div {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(90deg,#38bdfa 40%,#0e6abc 80%);
+  opacity: 0.75;
+  animation: pulse 0.9s infinite cubic-bezier(.6,.1,.2,1);
+}
+.spinner-dots div:nth-child(2) {
+  animation-delay: .3s;
+  background: linear-gradient(90deg,#78e2ff 40%,#6498ff 80%);
+}
+.spinner-dots div:nth-child(3) {
+  animation-delay: .6s;
+  background: linear-gradient(90deg, #43e285 40%, #b7ffc7 80%);
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.65;}
+  50% { transform: scale(1.35); opacity: 1;}
+  100% { transform: scale(1); opacity: 0.65;}
+}
+
 @media (max-width: 470px) {
-  .login-card { width: 98vw; padding: 24px 2vw 22px 2vw;}
+  .login-card, .panel { width: 98vw; padding: 24px 2vw 22px 2vw;}
 }
