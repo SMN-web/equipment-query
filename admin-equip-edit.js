@@ -232,7 +232,7 @@ export function showEquipEdit(container) {
           if (idx >= 0) allRows[idx] = {...row, ...newRow};
           renderTable();
           statusSpan.textContent = "Saving...";
-          fetch('https://ad-eq-li.smnglobal.workers.dev/api/equipment-edit', {
+          fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-edit', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
