@@ -249,10 +249,7 @@ export function showEquipEdit(container) {
             })
           })
           .then(r => r.json())
-          .then(res => {
-            if (!res.success) throw new Error(res.error);
-            statusSpan.textContent = "Saved.";
-          })
+          
          .then(async res => {
   if (!res.success) {
     statusSpan.textContent = "Save failed! " + (res.error || "");
