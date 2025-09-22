@@ -35,7 +35,6 @@ function formatLocalDateString(iso) {
   const ampm = pm ? "PM" : "AM";
   return `${dd}-${mon}-${yy}, ${hr}:${min} ${ampm}`;
 }
-
 function buildColumns(rawCols) {
   const baseCols = [...rawCols];
   if (!baseCols.includes('expiryDate')) baseCols.push('expiryDate');
@@ -51,58 +50,90 @@ export function showEquipList(container) {
           <option value="crane">Crane Equipment</option>
           <option value="manlift">Manlift Equipment</option>
         </select>
+        <span class="toolbar-gap"></span>
         <span id="filtered-count" class="equip-filtered-count small"></span>
-        <button id="equip-csv-btn" class="csv-btn small">CSV</button>
-        <button id="equip-pdf-btn" class="pdf-btn small">PDF</button>
+        <span class="toolbar-gap"></span>
+        <div class="export-dropdown-wrap">
+          <button class="export-main-btn">Export ▼</button>
+          <div class="export-dropdown-list">
+            <div class="export-dropdown-item" data-type="crane" data-format="csv">Export Crane (CSV)</div>
+            <div class="export-dropdown-item" data-type="crane" data-format="pdf">Export Crane (PDF)</div>
+            <div class="export-dropdown-item" data-type="manlift" data-format="csv">Export Manlift (CSV)</div>
+            <div class="export-dropdown-item" data-type="manlift" data-format="pdf">Export Manlift (PDF)</div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="equip-table-displayarea"></div>
   `;
 
-  const select = container.querySelector('#equipTableSelect');
-  const displayArea = container.querySelector('#equip-table-displayarea');
-  const csvBtn = container.querySelector('#equip-csv-btn');
-  const pdfBtn = container.querySelector('#equip-pdf-btn');
-  const filteredCount = container.querySelector('#filtered-count');
-  let currentColumns = [], currentRows = [], currentTitle = '', filteredRows = [];
+  // Export dropdown menu logic
+  const exportBtn = container.querySelector('.export-main-btn');
+  const dropdown = container.querySelector('.export-dropdown-list');
+  exportBtn.onclick = e => {
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  };
+  document.addEventListener('click', e => {
+    if (!exportBtn.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+  dropdown.querySelectorAll('.export-dropdown-item').forEach(item => {
+    item.onclick = () => {
+      dropdown.style.display = 'none';
+      const type = item.dataset.type;
+      const format = item.dataset.format;
+      runExport(type, format);
+    };
+  });
 
+  // To be efficient, keep current data for both types in memory
+  let craneData = {}, manliftData = {};
+  let state = { type: 'crane', columns: [], rows: [], filteredRows: [] };
+  let isLoading = false;
+
+  // Initial load
   loadCurrentTable();
-  select.addEventListener('change', () => loadCurrentTable());
 
-  function loadCurrentTable() {
-    const type = select.value;
+  // Dropdown type switch
+  container.querySelector('#equipTableSelect').addEventListener('change', () => loadCurrentTable());
+
+  function loadCurrentTable(selectedType) {
+    if (isLoading) return;
+    const type = selectedType || container.querySelector('#equipTableSelect').value;
+    isLoading = true;
     showSpinner(container);
     fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${type}`, {
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }
     })
-    .then(resp => resp.json()).then(result => {
+    .then(resp => resp.json())
+    .then(result => {
       hideSpinner(container);
+      isLoading = false;
       if (!result.success) {
-        displayArea.innerHTML = `<div class="equip-fetch-error">Error: ${result.error || 'Failed to fetch data'}.</div>`;
-        filteredCount.textContent = '';
+        container.querySelector('#equip-table-displayarea').innerHTML = `<div class="equip-fetch-error">Error: ${result.error || 'Failed to fetch data'}.</div>`;
+        container.querySelector('#filtered-count').textContent = '';
         return;
       }
-      // Assign a _fixed serial number_ for each original row
       let cols = result.columns.filter(c => c !== 'updaterUsername');
       cols = buildColumns(cols);
-      currentColumns = cols;
-      // Each row gets a slNo value based on its position in the raw, unfiltered DB order
-      currentRows = result.rows.map((row, i) => ({...row, slNo: i + 1}));
-      currentTitle = (type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
-      filteredRows = [...currentRows];
-      renderTable(currentColumns, currentRows, displayArea, currentTitle);
-      updateFilteredCount(filteredRows.length, currentRows.length);
+      const rowsWithSlNo = result.rows.map((row, i) => ({...row, slNo: i + 1}));
+      state = { type, columns: cols, rows: rowsWithSlNo, filteredRows: [...rowsWithSlNo] };
+      if (type === 'crane') craneData = {...state};
+      if (type === 'manlift') manliftData = {...state};
+      renderTable(cols, rowsWithSlNo, container.querySelector('#equip-table-displayarea'), type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
+      updateFilteredCount(state.filteredRows.length, state.rows.length);
     })
     .catch(() => {
       hideSpinner(container);
-      displayArea.innerHTML = `<div class="equip-fetch-error">Error fetching data.</div>`;
-      filteredCount.textContent = '';
+      isLoading = false;
+      container.querySelector('#equip-table-displayarea').innerHTML = `<div class="equip-fetch-error">Error fetching data.</div>`;
+      container.querySelector('#filtered-count').textContent = '';
     });
   }
 
   function renderTable(columns, data, box, title) {
-    // .slNo is now fixed for initial DB ordering!
-    filteredRows = [...data];
+    state.filteredRows = [...data];
     box.innerHTML = `
       <div class="equip-table-container">
         <table class="equip-list-table" id="equip-main-table">
@@ -113,12 +144,11 @@ export function showEquipList(container) {
             ).join('')}</tr>
           </thead>
           <tbody>
-            ${filteredRows.map(row => tableRowHTML(row, columns)).join('')}
+            ${state.filteredRows.map(row => tableRowHTML(row, columns)).join('')}
           </tbody>
         </table>
       </div>
     `;
-
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
     filterInputs.forEach(input => {
       input.addEventListener('input', function() {
@@ -131,17 +161,13 @@ export function showEquipList(container) {
             );
           }
         });
-        // **Do NOT renumber slNo** here! Keep from currentRows
-        filteredRows = curRows;
-        box.querySelector('tbody').innerHTML = filteredRows.map(row => tableRowHTML(row, columns)).join('');
+        state.filteredRows = curRows;
+        box.querySelector('tbody').innerHTML = state.filteredRows.map(row => tableRowHTML(row, columns)).join('');
         enableRowHighlighting(box.querySelector('tbody'));
-        updateFilteredCount(filteredRows.length, data.length);
+        updateFilteredCount(state.filteredRows.length, state.rows.length);
       });
     });
-
     enableRowHighlighting(box.querySelector('tbody'));
-    csvBtn.onclick = () => exportVisibleTableCSV(columns, filteredRows, title);
-    pdfBtn.onclick = () => printVisibleTable(columns, filteredRows, title);
   }
 
   function tableRowHTML(row, columns) {
@@ -227,7 +253,29 @@ export function showEquipList(container) {
     setTimeout(() => popup.print(), 350);
   }
 
+  function runExport(type, format) {
+    // Find correct data: always export from the most recently loaded content
+    let exportColumns, exportRows, exportTitle;
+    if (type === "crane") {
+      exportColumns = craneData.columns || state.columns;
+      exportRows = (type === state.type ? state.filteredRows : craneData.filteredRows) || [];
+      exportTitle = "Crane Equipment";
+    } else {
+      exportColumns = manliftData.columns || state.columns;
+      exportRows = (type === state.type ? state.filteredRows : manliftData.filteredRows) || [];
+      exportTitle = "Manlift Equipment";
+    }
+    // If rows not loaded, load from API
+    if (!exportRows || !exportRows.length) {
+      loadCurrentTable(type);
+      setTimeout(() => runExport(type, format), 800); // retry after data
+      return;
+    }
+    if (format === "csv") exportVisibleTableCSV(exportColumns, exportRows, exportTitle);
+    if (format === "pdf") printVisibleTable(exportColumns, exportRows, exportTitle);
+  }
+
   function updateFilteredCount(filtered, total) {
-    filteredCount.textContent = `Rows: ${filtered} of ${total}`;
+    container.querySelector('#filtered-count').textContent = `Rows: ${filtered} of ${total}`;
   }
 }
