@@ -29,9 +29,16 @@ export function showEquipUpload(container) {
   const tableDiv = container.querySelector("#equipment-table");
   const failedTableDiv = container.querySelector("#failed-table");
 
+  // Column order for import/upload as per your spec
   const columnsByEquipment = {
-    crane: ["plantNo", "regNo", "description", "capacity", "type", "owner", "train", "location", "engineer", "riggerCHName", "riggerPhNo", "status"],
-    manlift: ["plantNo", "regNo", "description", "length", "type", "owner", "train", "location", "engineer", "operatorName", "operatorPhNo", "status"],
+    crane: [
+      "plantNo", "regNo", "description", "capacity", "type", "owner", "train", "location",
+      "engineer", "expiryDate", "status", "riggerCHName", "riggerPhNo"
+    ],
+    manlift: [
+      "plantNo", "regNo", "description", "length", "type", "owner", "train", "location",
+      "engineer", "expiryDate", "status", "operatorName", "operatorPhNo"
+    ]
   };
 
   let parsedData = null;      // {headers, rows, equipmentType}
@@ -98,6 +105,7 @@ export function showEquipUpload(container) {
     if (uploadBtn.textContent === "Upload") {
       const file = fileInput.files[0];
       const equipmentType = equipmentSelect.value;
+      const expectedCols = columnsByEquipment[equipmentType];
 
       if (!file) {
         statusDiv.textContent = "Please select a CSV file.";
@@ -117,7 +125,17 @@ export function showEquipUpload(container) {
             return;
           }
 
+          // Enforce correct column order and show error if headers mismatch
           const headers = data[0];
+          const lowerHeaders = headers.map(h => h.trim().toLowerCase());
+          const lowerExpected = expectedCols.map(h => h.toLowerCase());
+
+          if (JSON.stringify(lowerHeaders) !== JSON.stringify(lowerExpected)) {
+            statusDiv.innerHTML = `Header mismatch.<br>Expected: <span style="color:#946d00">${expectedCols.join(", ")}</span><br>Found: <span style="color:#c00">${headers.join(", ")}</span>`;
+            statusDiv.classList.add("error");
+            return;
+          }
+
           const rows = data.slice(1);
           tableDiv.innerHTML = createTable(headers, rows);
           failedTableDiv.innerHTML = "";
@@ -142,12 +160,10 @@ export function showEquipUpload(container) {
         statusDiv.classList.add("error");
         return;
       }
-      // --- Client-side FILTER FOR UNIQUE plantNo/regNo ---
       const regMap = new Map();
       const plantMap = new Map();
       const dupIndexes = new Set();
 
-      // Find all repeats (NOT "first wins") and collect all indices, not just subsequent
       parsedData.rows.forEach((row, idx) => {
         const headers = parsedData.headers;
         const reg = row[headers.indexOf('regNo')];
@@ -157,8 +173,6 @@ export function showEquipUpload(container) {
         if (plantMap.has(pln)) { dupIndexes.add(idx); dupIndexes.add(plantMap.get(pln)); }
         else plantMap.set(pln, idx);
       });
-
-      // Prepare to send only those rows NOT in dupIndexes
       const toSend = parsedData.rows.filter((_r, idx) => !dupIndexes.has(idx));
       failedRows = Array.from(dupIndexes).map(idx => ({
         row: parsedData.rows[idx],
@@ -186,12 +200,11 @@ export function showEquipUpload(container) {
         const result = await resp.json();
         hideSpinner(container);
 
-        tableDiv.innerHTML = ""; // Clear success
+        tableDiv.innerHTML = "";
         uploadBtn.textContent = "Upload";
         uploadBtn.disabled = false;
         fileInput.value = "";
 
-        // Combine local duplicates with backend-failed rows
         let finalFailed = [
           ...failedRows,
           ...(result.failedRows ? result.failedRows.map(f => ({row: parsedData.headers.map(h => f.row[h] || ""), error: f.error})) : [])
@@ -220,13 +233,12 @@ export function showEquipUpload(container) {
     }
   });
 
-  // Add edit/save/delete for failed rows
   function addFailedRowHandlers() {
     failedTableDiv.querySelectorAll(".delRowBtn").forEach(btn => {
       btn.onclick = (e) => {
         const idx = parseInt(btn.getAttribute("data-row"));
         failedRows.splice(idx, 1);
-        failedTableDiv.innerHTML = createEditableFailedTable(failedHeaders, failedRows);
+        failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
         addFailedRowHandlers();
       };
     });
@@ -248,7 +260,7 @@ export function showEquipUpload(container) {
             },
             body: JSON.stringify({
               equipmentType: equipmentSelect.value,
-              rows: [Object.fromEntries(failedHeaders.map((h, i) => [h, editedRow[i]]))]
+              rows: [Object.fromEntries(parsedData.headers.map((h, i) => [h, editedRow[i]]))]
             })
           });
           const result = await resp.json();
@@ -256,18 +268,18 @@ export function showEquipUpload(container) {
           if (resp.ok && result.success && (!result.failedRows || result.failedRows.length === 0)) {
             statusDiv.textContent = "Row saved successfully.";
             failedRows.splice(idx, 1);
-            failedTableDiv.innerHTML = createEditableFailedTable(failedHeaders, failedRows);
+            failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
             addFailedRowHandlers();
           } else {
             failedRows[idx].error = result.failedRows && result.failedRows[0] ? result.failedRows[0].error : (result.error || "Unknown error");
-            failedTableDiv.innerHTML = createEditableFailedTable(failedHeaders, failedRows);
+            failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
             addFailedRowHandlers();
             statusDiv.textContent = "Row save failed. See error in table.";
           }
         } catch (err) {
           hideSpinner(container);
           failedRows[idx].error = "Network/server error";
-          failedTableDiv.innerHTML = createEditableFailedTable(failedHeaders, failedRows);
+          failedTableDiv.innerHTML = createEditableFailedTable(parsedData.headers, failedRows);
           addFailedRowHandlers();
           statusDiv.textContent = "Row save failed. See error in table.";
         }
