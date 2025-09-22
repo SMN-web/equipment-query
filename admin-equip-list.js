@@ -12,16 +12,56 @@ const headerLabels = {
   "train": "Train",
   "location": "Location",
   "engineer": "Engineer",
+  "expiryDate": "Expiry Date",
+  "status": "Status",
   "riggerCHName": "Rigger C/H Name",
   "riggerPhNo": "Rigger Ph. No.",
   "operatorName": "Operator Name",
   "operatorPhNo": "Operator Ph. No.",
-  "status": "Status",
-  "expiryDate": "Expiry Date",
   "createdAt": "Created At",
   "updatedAt": "Updated At",
   "updaterName": "Updated By"
 };
+
+function buildColumns(rawCols, type="crane") {
+  // Make a copy to reorder
+  let cols = rawCols.filter(c => c !== 'updaterUsername');
+  if (!cols.includes('expiryDate')) cols.push('expiryDate');
+  if (!cols.includes('riggerCHName')) cols.push('riggerCHName');
+  if (!cols.includes('riggerPhNo')) cols.push('riggerPhNo');
+  // Always put serial first
+  if (cols[0] !== 'slNo') cols.unshift('slNo');
+
+  // --- REORDER for Crane ---
+  if (type === "crane") {
+    // Find indices for each
+    let idxEng = cols.indexOf('engineer');
+    let idxExpiry = cols.indexOf('expiryDate');
+    let idxStatus = cols.indexOf('status');
+    let idxRiggerName = cols.indexOf('riggerCHName');
+    let idxRiggerPh = cols.indexOf('riggerPhNo');
+    // Remove if present to reposition
+    let arr = cols.filter(c => !['expiryDate', 'status', 'riggerCHName', 'riggerPhNo'].includes(c));
+    // Insert expiry after engineer
+    arr.splice(idxEng + 1, 0, 'expiryDate');
+    // Insert status after expiry
+    arr.splice(idxEng + 2, 0, 'status');
+    // Insert rigger fields after status
+    arr.splice(idxEng + 3, 0, 'riggerCHName', 'riggerPhNo');
+    return arr;
+  }
+  // --- REORDER for Manlift (expiry before status if both exist) ---
+  if (type === "manlift") {
+    let idxEng = cols.indexOf('engineer');
+    let idxExpiry = cols.indexOf('expiryDate');
+    let idxStatus = cols.indexOf('status');
+    let arr = cols.filter(c => !['expiryDate', 'status'].includes(c));
+    arr.splice(idxEng + 1, 0, 'expiryDate');
+    arr.splice(idxEng + 2, 0, 'status');
+    return arr;
+  }
+  return cols;
+}
 
 function formatLocalDateString(iso) {
   if (!iso) return '';
@@ -34,12 +74,6 @@ function formatLocalDateString(iso) {
   hr = hr % 12; if (hr === 0) hr = 12;
   const ampm = pm ? "PM" : "AM";
   return `${dd}-${mon}-${yy}, ${hr}:${min} ${ampm}`;
-}
-function buildColumns(rawCols) {
-  const baseCols = [...rawCols];
-  if (!baseCols.includes('expiryDate')) baseCols.push('expiryDate');
-  if (baseCols[0] !== 'slNo') baseCols.unshift('slNo');
-  return baseCols;
 }
 
 export function showEquipList(container) {
@@ -56,10 +90,8 @@ export function showEquipList(container) {
         <div class="export-dropdown-wrap">
           <button class="export-main-btn">Export ▼</button>
           <div class="export-dropdown-list">
-            <div class="export-dropdown-item" data-type="crane" data-format="csv">Export Crane (CSV)</div>
-            <div class="export-dropdown-item" data-type="crane" data-format="pdf">Export Crane (PDF)</div>
-            <div class="export-dropdown-item" data-type="manlift" data-format="csv">Export Manlift (CSV)</div>
-            <div class="export-dropdown-item" data-type="manlift" data-format="pdf">Export Manlift (PDF)</div>
+            <div class="export-dropdown-item" data-format="csv">Export CSV</div>
+            <div class="export-dropdown-item" data-format="pdf">Export PDF</div>
           </div>
         </div>
       </div>
@@ -67,7 +99,7 @@ export function showEquipList(container) {
     <div id="equip-table-displayarea"></div>
   `;
 
-  // Export dropdown menu logic
+  // Export dropdown logic
   const exportBtn = container.querySelector('.export-main-btn');
   const dropdown = container.querySelector('.export-dropdown-list');
   exportBtn.onclick = e => {
@@ -81,29 +113,23 @@ export function showEquipList(container) {
   dropdown.querySelectorAll('.export-dropdown-item').forEach(item => {
     item.onclick = () => {
       dropdown.style.display = 'none';
-      const type = item.dataset.type;
       const format = item.dataset.format;
-      runExport(type, format);
+      runExport(format);
     };
   });
 
-  // To be efficient, keep current data for both types in memory
-  let craneData = {}, manliftData = {};
   let state = { type: 'crane', columns: [], rows: [], filteredRows: [] };
   let isLoading = false;
 
-  // Initial load
   loadCurrentTable();
-
-  // Dropdown type switch
   container.querySelector('#equipTableSelect').addEventListener('change', () => loadCurrentTable());
 
-  function loadCurrentTable(selectedType) {
+  function loadCurrentTable() {
     if (isLoading) return;
-    const type = selectedType || container.querySelector('#equipTableSelect').value;
+    const type = container.querySelector('#equipTableSelect').value;
     isLoading = true;
     showSpinner(container);
-    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${type}`, {
+    fetch(`https://your-worker-domain/api/equipment-list?type=${type}`, {
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }
     })
     .then(resp => resp.json())
@@ -115,12 +141,9 @@ export function showEquipList(container) {
         container.querySelector('#filtered-count').textContent = '';
         return;
       }
-      let cols = result.columns.filter(c => c !== 'updaterUsername');
-      cols = buildColumns(cols);
+      let cols = buildColumns(result.columns, type);
       const rowsWithSlNo = result.rows.map((row, i) => ({...row, slNo: i + 1}));
       state = { type, columns: cols, rows: rowsWithSlNo, filteredRows: [...rowsWithSlNo] };
-      if (type === 'crane') craneData = {...state};
-      if (type === 'manlift') manliftData = {...state};
       renderTable(cols, rowsWithSlNo, container.querySelector('#equip-table-displayarea'), type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
       updateFilteredCount(state.filteredRows.length, state.rows.length);
     })
@@ -136,6 +159,7 @@ export function showEquipList(container) {
     state.filteredRows = [...data];
     box.innerHTML = `
       <div class="equip-table-container">
+        <div style="width:100%;overflow-x:auto;">
         <table class="equip-list-table" id="equip-main-table">
           <thead>
             <tr>${columns.map(c => `<th>${headerLabels[c] || c}</th>`).join('')}</tr>
@@ -147,6 +171,7 @@ export function showEquipList(container) {
             ${state.filteredRows.map(row => tableRowHTML(row, columns)).join('')}
           </tbody>
         </table>
+        </div>
       </div>
     `;
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
@@ -253,26 +278,12 @@ export function showEquipList(container) {
     setTimeout(() => popup.print(), 350);
   }
 
-  function runExport(type, format) {
-    // Find correct data: always export from the most recently loaded content
-    let exportColumns, exportRows, exportTitle;
-    if (type === "crane") {
-      exportColumns = craneData.columns || state.columns;
-      exportRows = (type === state.type ? state.filteredRows : craneData.filteredRows) || [];
-      exportTitle = "Crane Equipment";
-    } else {
-      exportColumns = manliftData.columns || state.columns;
-      exportRows = (type === state.type ? state.filteredRows : manliftData.filteredRows) || [];
-      exportTitle = "Manlift Equipment";
-    }
-    // If rows not loaded, load from API
-    if (!exportRows || !exportRows.length) {
-      loadCurrentTable(type);
-      setTimeout(() => runExport(type, format), 800); // retry after data
-      return;
-    }
-    if (format === "csv") exportVisibleTableCSV(exportColumns, exportRows, exportTitle);
-    if (format === "pdf") printVisibleTable(exportColumns, exportRows, exportTitle);
+  function runExport(format) {
+    const columns = state.columns;
+    const rows = state.filteredRows;
+    const title = state.type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment';
+    if (format === "csv") exportVisibleTableCSV(columns, rows, title);
+    if (format === "pdf") printVisibleTable(columns, rows, title);
   }
 
   function updateFilteredCount(filtered, total) {
