@@ -50,7 +50,7 @@ function buildColumns(rawCols, type="crane") {
   return cols;
 }
 
-// Date formatter
+// For audit dates only (createdAt/updatedAt). expiryDate shown RAW
 function formatLocalDateString(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -164,7 +164,6 @@ export function showEquipList(container) {
         </div>
       </div>
     `;
-    // Attach clear button after rendering filters
     attachClearHandler(box);
 
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
@@ -185,7 +184,6 @@ export function showEquipList(container) {
         updateFilteredCount(state.filteredRows.length, state.rows.length);
       });
     });
-
     enableRowHighlighting(box.querySelector('tbody'));
   }
 
@@ -201,10 +199,11 @@ export function showEquipList(container) {
   }
 
   function tableRowHTML(row, columns) {
-    const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     return `<tr>${columns.map(col => {
       if (col === 'slNo') return `<td>${row.slNo}</td>`;
-      if (dateCols.includes(col)) return `<td>${formatLocalDateString(row[col])}</td>`;
+      if (col === 'expiryDate') return `<td>${row[col] ?? ''}</td>`;
+      if (col === 'createdAt' || col === 'updatedAt')
+        return `<td>${formatLocalDateString(row[col])}</td>`;
       return `<td>${row[col] ?? ''}</td>`;
     }).join('')}</tr>`;
   }
@@ -220,14 +219,16 @@ export function showEquipList(container) {
 
   function exportVisibleTableCSV(columns, rows, title) {
     const csvHeaders = columns.map(c => headerLabels[c] || c);
-    const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     let csv = csvHeaders.join(',') + '\n' +
       rows.map(row =>
         columns.map(col =>
           `"${(col==='slNo' ? row.slNo
-            : (dateCols.includes(col)
-              ? (row[col] ? new Date(row[col]).toISOString().replace('T',' ').slice(0,16) : '')
-              : (row[col] ?? '')
+            : (col==='expiryDate'
+              ? (row[col] ?? '')
+              : (["createdAt","updatedAt"].includes(col)
+                ? formatLocalDateString(row[col])
+                : (row[col] ?? '')
+              )
             )
           ).toString().replace(/"/g, '""')}"`
         ).join(',')
@@ -242,7 +243,6 @@ export function showEquipList(container) {
   }
 
   function printVisibleTable(columns, rows, title) {
-    const dateCols = ["createdAt", "updatedAt", "expiryDate"];
     let tableHTML = `
       <table class="printable-table">
         <thead>
@@ -252,8 +252,15 @@ export function showEquipList(container) {
           ${rows.map((row, idx) =>
             `<tr${idx % 2 === 1 ? ' class="zebra-row"' : ''}>${
               columns.map(col =>
-                `<td>${col==='slNo' ? row.slNo
-                  : (dateCols.includes(col) ? formatLocalDateString(row[col]) : row[col] ?? '')}</td>`
+                `<td>${col==='slNo'
+                  ? row.slNo
+                  : col==='expiryDate'
+                  ? (row[col] ?? '')
+                  : (["createdAt","updatedAt"].includes(col)
+                    ? formatLocalDateString(row[col])
+                    : (row[col] ?? '')
+                  )
+                }</td>`
               ).join('')
             }</tr>`
           ).join('')}
