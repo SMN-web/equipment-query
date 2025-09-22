@@ -253,9 +253,14 @@ export function showEquipEdit(container) {
             if (!res.success) throw new Error(res.error);
             statusSpan.textContent = "Saved.";
           })
-          .catch(() => {
-            statusSpan.textContent = "Save failed!";
-          });
+         .then(async res => {
+  if (!res.success) {
+    statusSpan.textContent = "Save failed! " + (res.error || "");
+    alert("Backend error: " + (res.error || "unknown"));
+    return;
+  }
+  statusSpan.textContent = "Saved.";
+})
         }
       );
     };
