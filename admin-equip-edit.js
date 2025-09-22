@@ -1,6 +1,5 @@
 import { showSpinner, hideSpinner } from './spinner.js';
 
-// All column headers
 const headerLabels = {
   slNo: "Sl. No.",
   plantNo: "Plant No.",
@@ -18,19 +17,18 @@ const headerLabels = {
   riggerCHName: "Rigger C/H Name",
   riggerPhNo: "Rigger Ph. No.",
   operatorName: "Operator Name",
-  operatorPhNo: "Operator Ph. No.",
-  createdAt: "Created At",
-  updatedAt: "Updated At",
-  updaterUsername: "Updated By"
+  operatorPhNo: "Operator Ph. No."
 };
 
-// Helper for column order
 function buildColumns(rawCols, type = "crane") {
-  let cols = rawCols.filter(c => c !== 'updaterUsername');
+  let cols = rawCols.filter(c =>
+    c !== 'updaterUsername' && c !== 'createdAt' && c !== 'updatedAt'
+  );
   if (!cols.includes('expiryDate')) cols.push('expiryDate');
   if (!cols.includes('riggerCHName')) cols.push('riggerCHName');
   if (!cols.includes('riggerPhNo')) cols.push('riggerPhNo');
   if (cols[0] !== 'slNo') cols.unshift('slNo');
+
   if (type === "crane") {
     let idxEng = cols.indexOf('engineer');
     let arr = cols.filter(c => !['expiryDate', 'status', 'riggerCHName', 'riggerPhNo'].includes(c));
@@ -83,7 +81,7 @@ export function showEquipEdit(container) {
           </div>
         </div>
       </div>
-      <p class="demo-txt">Edit modal disables Plant No and Reg No. All changes go by regNo reference. Confirmation shows before saving/deleting.</p>
+      <p class="demo-txt">Edit modal disables Plant No and Reg No. All changes go by id and regNo; confirmation before saving/deleting.</p>
     </div>
   `;
 
@@ -103,7 +101,7 @@ export function showEquipEdit(container) {
   const confirmBtn = container.querySelector('#confirm-btn');
   const cancelConfirmBtn = container.querySelector('#cancel-btn');
 
-  let allRows = [], columns = [], equipType = "crane", filteredRows = [], filterValues = {}, editingRow = null, editedNewRow = null;
+  let allRows = [], columns = [], equipType = "crane", filteredRows = [], filterValues = {}, editingRow = null;
 
   select.addEventListener('change', loadTable);
   loadTable();
@@ -122,6 +120,7 @@ export function showEquipEdit(container) {
     .then(data => {
       if (!data.success) throw new Error(data.error || "Failed to fetch.");
       columns = buildColumns(data.columns, equipType);
+      // id is included from backend (but NOT displayed)
       allRows = data.rows.map((r, i) => ({...r, slNo: i + 1}));
       filteredRows = [...allRows];
       renderTable();
@@ -179,17 +178,15 @@ export function showEquipEdit(container) {
     });
   }
 
-  // Modal for editing or deleting a row
   function showEditModal(row) {
-    const lockedCols = ['plantNo','regNo','createdAt','updatedAt','updaterUsername'];
-    const editableCols = columns.filter(c => !lockedCols.includes(c));
+    // Keep `id` as a JS property, never shown
+    const lockedCols = ['plantNo','regNo'];
+    const editableCols = columns.filter(c => !lockedCols.includes(c) && c !== 'slNo');
     modalContent.innerHTML = `
       <div style="overflow-x:auto;">
         <table style="min-width:700px;width:100%;margin-bottom:1.3em;">
           <tr>
-            ${columns.map(col =>
-              `<th style="text-align:left;font-weight:600;">${headerLabels[col] || col}</th>`
-            ).join('')}
+            ${columns.map(col => `<th style="text-align:left;font-weight:600;">${headerLabels[col] || col}</th>`).join('')}
           </tr>
           <tr>
             ${columns.map(col =>
@@ -206,12 +203,10 @@ export function showEquipEdit(container) {
     modalBg.style.display = "block";
 
     saveBtn.onclick = () => {
-      // Gather new values
       const newRow = {...row};
       editableCols.forEach(col => {
         newRow[col] = modalContent.querySelector(`#edit-input-${col}`).value;
       });
-      // Only show changed fields in confirmation
       const changedCols = editableCols.filter(col => String(row[col] ?? '') !== String(newRow[col] ?? ''));
       if (changedCols.length === 0) {
         modalBg.style.display = "none";
@@ -233,11 +228,9 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          // Update UI
-          const idx = allRows.findIndex(r => r.regNo == row.regNo);
+          const idx = allRows.findIndex(r => r.id == row.id && r.regNo == row.regNo);
           if (idx >= 0) allRows[idx] = {...row, ...newRow};
           renderTable();
-          // Backend update
           statusSpan.textContent = "Saving...";
           fetch('https://ad-eq-li.smnglobal.workers.dev/api/equipment-edit', {
             method: 'POST',
@@ -247,6 +240,7 @@ export function showEquipEdit(container) {
             },
             body: JSON.stringify({
               equipmentType: equipType,
+              id: row.id,
               regNo: row.regNo,
               updates: editableCols.reduce((obj, col) => {
                 if (row[col] !== newRow[col]) obj[col] = newRow[col];
@@ -284,12 +278,12 @@ export function showEquipEdit(container) {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + localStorage.getItem('auth_token')
             },
-            body: JSON.stringify({ equipmentType: equipType, regNo: row.regNo })
+            body: JSON.stringify({ equipmentType: equipType, id: row.id, regNo: row.regNo })
           })
           .then(r => r.json())
           .then(res => {
             if (!res.success) throw new Error(res.error);
-            allRows = allRows.filter(r => r.regNo != row.regNo);
+            allRows = allRows.filter(r => r.id != row.id);
             renderTable();
             statusSpan.textContent = "Deleted.";
           })
@@ -301,7 +295,6 @@ export function showEquipEdit(container) {
     };
   }
 
-  // Confirmation modal logic
   function showConfirmModal(html, onConfirm) {
     confirmContent.innerHTML = html;
     confirmBg.style.display = "block";
