@@ -129,7 +129,7 @@ export function showEquipList(container) {
     const type = container.querySelector('#equipTableSelect').value;
     isLoading = true;
     showSpinner(container);
-    fetch(`https://your-worker-domain/api/equipment-list?type=${type}`, {
+    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${type}`, {
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }
     })
     .then(resp => resp.json())
