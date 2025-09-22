@@ -337,81 +337,102 @@ th {
 .equip-list-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.3em;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 7px;
   justify-content: flex-start;
 }
+
+/* COMPACT controls */
 .equip-table-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1.3em;
-  margin-left: 14px;
+  gap: 0.18em;
+  margin: 0;
 }
+
 .equip-table-selector {
-  font-size: 1.12em;
-  padding: 8px 22px 8px 6px;
-  border-radius: 6px;
-  border: 1.5px solid #93bffd;
-  background: #fafdff;
-  min-width: 178px;
-  font-weight: 600;
-  color: #194879;
-  margin-right: 13px;
+  font-size: 0.89em;
+  padding: 2px 7px 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #93bffd;
+  min-width: 73px;
+  max-width: 120px;
+  font-weight: 500;
+  background: #f8fcfe;
+  height: 23px;
+  margin-right: 2px;
+  margin-left: 0;
+  margin-top: 1px;
+  margin-bottom: 1px;
 }
+
 .equip-filtered-count {
-  font-weight: 700;
+  font-weight: 500;
   color: #0079bb;
-  font-size: 1.08em;
-  margin-left: 0.7em;
-  margin-right: 0.7em;
-  min-width: 78px;
+  font-size: 0.75em;
+  min-width: 34px;
+  margin: 0 3px;
+  text-align: right;
   display: inline-block;
+  line-height: 1.15;
 }
-.export-btn-bar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-button.csv-btn,
-button.pdf-btn {
-  color: #194879;
-  background: #e0f7fa;
-  border: 1.5px solid #6ebffb;
-  border-radius: 8px;
-  min-width: 112px;
-  min-height: 39px;
-  font-size: 1.1em;
-  font-weight: 700;
-  margin-left: 6px;
-  margin-right: 4px;
-  box-shadow: 0 2px 7px #e5efff66;
-  letter-spacing: 0.02em;
+
+button.csv-btn, button.pdf-btn {
+  color: #135a96;
+  background: #eafdff;
+  border: 1px solid #99cef9;
+  border-radius: 5px;
+  min-width: 24px;
+  height: 22px;
+  font-size: 0.8em;
+  font-weight: 500;
+  padding: 0 6px;
   cursor: pointer;
-  transition: background 0.13s, border 0.13s;
+  margin: 0 2px 0 0;
+  box-shadow: 0 1px 3px #e5efff33;
 }
-button.csv-btn:hover,
-button.pdf-btn:hover {
-  background: #c7f4fd;
+button.csv-btn:hover, button.pdf-btn:hover {
+  background: #d8ecfb;
   border-color: #1ba3de;
 }
-.equip-table-container {
-  background: #fbfdff;
-  border-radius: 12px;
-  box-shadow: 0 0 0.5px #eafdff;
-  overflow-x: auto;
-  padding: 9px 5px 5px 5px;
-  margin-bottom: 30px;
+
+/* Tight wrapping for mobile */
+@media (max-width: 600px) {
+  .equip-table-controls {
+    flex-wrap: wrap;
+    gap: 0.09em;
+    padding: 0;
+    margin: 0;
+  }
+  .equip-table-selector, .equip-filtered-count {
+    font-size: 0.74em;
+    min-width: 59px; 
+    height: 17px;
+    margin-bottom: 1px;
+    margin-top: 1px;
+  }
+  button.csv-btn, button.pdf-btn {
+    min-width: 19px;
+    font-size: 0.68em;
+    height: 17px;
+    padding: 0 3px;
+    margin: 0 1px 0 0;
+  }
 }
+
+.equip-table-container { margin-bottom: 10px; }
+
+/* --- The rest of your table CSS remains as before (only controls changed!) --- */
 .equip-list-table {
-  min-width: 1100px;
+  min-width: 900px;
   border-collapse: collapse;
   width: 100%;
-  font-size: 1em;
+  font-size: 0.96em;
   background: #fafdff;
 }
 .equip-list-table th, .equip-list-table td {
-  padding: 0.6em 1.3em;
+  padding: 0.37em 0.8em;
   text-align: left;
   border-bottom: 1px solid #e6e6e6;
   vertical-align: top;
@@ -422,46 +443,35 @@ button.pdf-btn:hover {
   top: 0;
   background: #eafdff;
   z-index: 3;
-  font-weight: 600;
+  font-weight: 590;
   border-top: 1px solid #e6e6e6;
 }
 .equip-list-table input.column-filter {
-  width: 98%;
-  padding: 3px 6px;
+  width: 97%;
+  padding: 2.5px 5px;
   background: #f6fcfe;
   border: 1px solid #e3eaf1;
-  font-size: 1em;
+  font-size: 0.93em;
   border-radius: 4px;
   margin-bottom: 3px;
   margin-top: 2px;
   color: #104088;
 }
 .equip-list-table tr.highlighted-row {
-  background: #c6e8ff !important;
+  background: #a9e2ff !important;
   transition: background 0.13s;
 }
 .equip-fetch-error {
   color: #c00;
   font-weight: 500;
-  padding: 1em 0;
+  padding: 0.6em 0;
 }
 @media print {
   .column-filter { display: none !important; }
   .equip-table-controls, .equip-list-toolbar, .export-btn-bar { display: none !important; }
 }
-/* Print zebra-color only for PDF - inlined in printVisibleTable */
-@media (max-width: 900px) {
-  .equip-table-container {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .equip-list-table {
-    min-width: 550px;
-    font-size: 0.97em;
-  }
-  .equip-table-selector { min-width: 105px; font-size: 1em; }
-}
 body, #app, .root-wrapper, .admin-main-section {
   background: #fafdff !important;
 }
+
 
