@@ -24,6 +24,7 @@ const headerLabels = {
   "updaterName": "Updated By"
 };
 
+// Fix column order for each type as requested
 function buildColumns(rawCols, type="crane") {
   let cols = rawCols.filter(c => c !== 'updaterUsername');
   if (!cols.includes('expiryDate')) cols.push('expiryDate');
@@ -49,6 +50,7 @@ function buildColumns(rawCols, type="crane") {
   return cols;
 }
 
+// For audit dates only (createdAt/updatedAt). expiryDate shown RAW
 function formatLocalDateString(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -60,17 +62,6 @@ function formatLocalDateString(iso) {
   hr = hr % 12; if (hr === 0) hr = 12;
   const ampm = pm ? "PM" : "AM";
   return `${dd}-${mon}-${yy}, ${hr}:${min} ${ampm}`;
-}
-
-// Utility to get unique filtered values for the current column
-function getUniqueValues(rows, col) {
-  const vals = new Set();
-  for (const row of rows) {
-    if (row[col] !== undefined && row[col] !== null && row[col] !== "") {
-      vals.add(row[col]);
-    }
-  }
-  return [...vals].sort((a, b) => String(a).localeCompare(String(b)));
 }
 
 export function showEquipList(container) {
@@ -116,13 +107,11 @@ export function showEquipList(container) {
     };
   });
 
-  // Excel-like filter state holds selected values for each column index (filtered values only)
-  const filterState = {};
-
   let state = { type: 'crane', columns: [], rows: [], filteredRows: [] };
   let isLoading = false;
 
   loadCurrentTable();
+
   container.querySelector('#equipTableSelect').addEventListener('change', () => loadCurrentTable());
 
   function loadCurrentTable() {
@@ -157,24 +146,16 @@ export function showEquipList(container) {
   }
 
   function renderTable(columns, data, box, title) {
-    state.filteredRows = filterRowsByState(data, filterState, columns);
+    state.filteredRows = [...data];
     box.innerHTML = `
       <div class="equip-table-container">
         <div style="width:100%;overflow-x:auto;">
         <table class="equip-list-table" id="equip-main-table">
           <thead>
             <tr>${columns.map(c => `<th>${headerLabels[c] || c}</th>`).join('')}</tr>
-            <tr>${columns.map((c, i) => `
-              <th class="excel-filter-cell">
-                <div class="excel-filter-btn" data-colidx="${i}">
-                  <span class="excel-filter-arrow">&#9662;</span>
-                </div>
-                <div class="excel-filter-popup" data-filter-popup="${i}" style="display:none">
-                  <div class="filter-list-wrap"></div>
-                  <button class="close-popup-btn" data-close-colidx="${i}">Close</button>
-                </div>
-              </th>
-            `).join('')}</tr>
+            <tr>${columns.map((c, i) =>
+              `<th><input type="text" class="column-filter" data-colidx="${i}" placeholder="Filter..."/></th>`
+            ).join('')}</tr>
           </thead>
           <tbody>
             ${state.filteredRows.map(row => tableRowHTML(row, columns)).join('')}
@@ -183,98 +164,37 @@ export function showEquipList(container) {
         </div>
       </div>
     `;
-    attachExcelFilterHandlers(box, columns, data);
     attachClearHandler(box);
-  }
 
-  function filterRowsByState(data, filterState, columns) {
-    let rows = [...data];
-    Object.entries(filterState).forEach(([idx, selectedSet]) => {
-      if (selectedSet && selectedSet.size > 0 && selectedSet.size !== getUniqueValues(rows, columns[idx]).length) {
-        // Only filter if not all selected, and some selected
-        rows = rows.filter(row => selectedSet.has(row[columns[idx]]));
-      }
-    });
-    return rows;
-  }
-
-  function attachExcelFilterHandlers(box, columns, data) {
-    // Open/close filter popup
-    box.querySelectorAll('.excel-filter-btn').forEach(btn => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        closeAllPopups();
-        const idx = +btn.dataset.colidx;
-        const popup = box.querySelector(`.excel-filter-popup[data-filter-popup="${idx}"]`);
-        const col = columns[idx];
-        // Use filtered rows to get unique values so it's context-nested
-        const vals = getUniqueValues(state.filteredRows, col);
-        if (!(idx in filterState)) filterState[idx] = new Set(vals);
-        // Remove selections no longer in filtered
-        Array.from(filterState[idx]).forEach(v => {
-          if (!vals.includes(v)) filterState[idx].delete(v);
-        });
-        // If you filter down to 0 items, avoid errors: always allow all if no selection (avoid select none!)
-        if (vals.length > 0 && filterState[idx].size === 0) vals.forEach(v => filterState[idx].add(v));
-        popup.querySelector('.filter-list-wrap').innerHTML = renderPopupList(idx, vals, filterState[idx]);
-        popup.style.display = (popup.style.display === 'block' ? 'none' : 'block');
-        // Event for checkboxes:
-        popup.querySelectorAll('.excel-filter-checkbox').forEach(chk => {
-          chk.onchange = () => {
-            const checkedVals = Array.from(popup.querySelectorAll('.excel-filter-checkbox')).filter(x => x.checked).map(x => decodeURIComponent(x.dataset.val));
-            filterState[idx] = new Set(checkedVals);
-            rerenderFiltered();
-          };
-        });
-        popup.querySelector('.excel-filter-checkbox-all').onchange = function () {
-          if (this.checked) {
-            filterState[idx] = new Set(vals);
-          } else {
-            filterState[idx] = new Set([]);
+    const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
+    filterInputs.forEach(input => {
+      input.addEventListener('input', function() {
+        let curRows = data;
+        filterInputs.forEach(inp => {
+          if (inp.value.trim()) {
+            const idx = +inp.dataset.colidx;
+            curRows = curRows.filter(row =>
+              (row[columns[idx]] ?? '').toString().toLowerCase().includes(inp.value.trim().toLowerCase())
+            );
           }
-          rerenderFiltered();
-        };
-      };
+        });
+        state.filteredRows = curRows;
+        box.querySelector('tbody').innerHTML = state.filteredRows.map(row => tableRowHTML(row, columns)).join('');
+        enableRowHighlighting(box.querySelector('tbody'));
+        updateFilteredCount(state.filteredRows.length, state.rows.length);
+      });
     });
-
-    // Global close
-    function closeAllPopups() {
-      box.querySelectorAll('.excel-filter-popup').forEach(p => p.style.display = 'none');
-    }
-    document.addEventListener('click', closeAllPopups);
-    box.querySelectorAll('.excel-filter-popup').forEach(pop => { pop.onclick = e => e.stopPropagation(); });
-    box.querySelectorAll('.close-popup-btn').forEach(btn => {
-      btn.onclick = (e) => {
-        const idx = btn.dataset.closeColidx;
-        box.querySelector(`.excel-filter-popup[data-filter-popup="${idx}"]`).style.display = 'none';
-      };
-    });
-
-    function rerenderFiltered() {
-      // On every filter, rerender table with updated state
-      renderTable(columns, data, box.parentNode, state.type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
-      // Update count too
-      updateFilteredCount(state.filteredRows.length, state.rows.length);
-    }
-  }
-
-  function renderPopupList(idx, vals, selectedSet) {
-    let html = `<div style="max-height:240px;overflow:auto;margin-bottom:7px;">
-      <label><input class="excel-filter-checkbox-all" type="checkbox" ${selectedSet.size === vals.length ? 'checked' : ''}/> <strong>Select All</strong></label><br/>
-      ${vals.map(v =>
-        `<label><input class="excel-filter-checkbox" data-val="${encodeURIComponent(v)}" type="checkbox" ${selectedSet.has(v) ? 'checked' : ''}/> ${v}</label><br/>`
-      ).join('')}
-    </div>`;
-    return html;
+    enableRowHighlighting(box.querySelector('tbody'));
   }
 
   function attachClearHandler(box) {
     const clearBtn = container.querySelector('#clear-filters-btn');
     if (!clearBtn) return;
     clearBtn.onclick = () => {
-      Object.keys(filterState).forEach(idx => { filterState[idx] = null; });
-      renderTable(state.columns, state.rows, container.querySelector('#equip-table-displayarea'), state.type === 'crane' ? 'Crane Equipment' : 'Manlift Equipment');
-      updateFilteredCount(state.rows.length, state.rows.length);
+      box.querySelectorAll('.column-filter').forEach(inp => {
+        inp.value = '';
+        inp.dispatchEvent(new Event('input'));
+      });
     };
   }
 
