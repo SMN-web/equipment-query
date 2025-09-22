@@ -1,5 +1,6 @@
 import { showSpinner, hideSpinner } from './spinner.js';
 
+// Column label mapping
 const headerLabels = {
   "slNo": "Sl. No.",
   "plantNo": "Plant No.",
@@ -23,46 +24,33 @@ const headerLabels = {
   "updaterName": "Updated By"
 };
 
+// Fix column order for each type as requested
 function buildColumns(rawCols, type="crane") {
-  // Make a copy to reorder
   let cols = rawCols.filter(c => c !== 'updaterUsername');
   if (!cols.includes('expiryDate')) cols.push('expiryDate');
   if (!cols.includes('riggerCHName')) cols.push('riggerCHName');
   if (!cols.includes('riggerPhNo')) cols.push('riggerPhNo');
-  // Always put serial first
   if (cols[0] !== 'slNo') cols.unshift('slNo');
 
-  // --- REORDER for Crane ---
   if (type === "crane") {
-    // Find indices for each
     let idxEng = cols.indexOf('engineer');
-    let idxExpiry = cols.indexOf('expiryDate');
-    let idxStatus = cols.indexOf('status');
-    let idxRiggerName = cols.indexOf('riggerCHName');
-    let idxRiggerPh = cols.indexOf('riggerPhNo');
-    // Remove if present to reposition
-    let arr = cols.filter(c => !['expiryDate', 'status', 'riggerCHName', 'riggerPhNo'].includes(c));
-    // Insert expiry after engineer
-    arr.splice(idxEng + 1, 0, 'expiryDate');
-    // Insert status after expiry
-    arr.splice(idxEng + 2, 0, 'status');
-    // Insert rigger fields after status
-    arr.splice(idxEng + 3, 0, 'riggerCHName', 'riggerPhNo');
+    let arr = cols.filter(c => !['expiryDate','status','riggerCHName','riggerPhNo'].includes(c));
+    arr.splice(idxEng+1,0,'expiryDate');
+    arr.splice(idxEng+2,0,'status');
+    arr.splice(idxEng+3,0,'riggerCHName','riggerPhNo');
     return arr;
   }
-  // --- REORDER for Manlift (expiry before status if both exist) ---
   if (type === "manlift") {
     let idxEng = cols.indexOf('engineer');
-    let idxExpiry = cols.indexOf('expiryDate');
-    let idxStatus = cols.indexOf('status');
-    let arr = cols.filter(c => !['expiryDate', 'status'].includes(c));
-    arr.splice(idxEng + 1, 0, 'expiryDate');
-    arr.splice(idxEng + 2, 0, 'status');
+    let arr = cols.filter(c => !['expiryDate','status'].includes(c));
+    arr.splice(idxEng+1,0,'expiryDate');
+    arr.splice(idxEng+2,0,'status');
     return arr;
   }
   return cols;
 }
 
+// Date formatter
 function formatLocalDateString(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -94,6 +82,7 @@ export function showEquipList(container) {
             <div class="export-dropdown-item" data-format="pdf">Export PDF</div>
           </div>
         </div>
+        <button id="clear-filters-btn" class="clear-filters-btn">Clear</button>
       </div>
     </div>
     <div id="equip-table-displayarea"></div>
@@ -122,6 +111,7 @@ export function showEquipList(container) {
   let isLoading = false;
 
   loadCurrentTable();
+
   container.querySelector('#equipTableSelect').addEventListener('change', () => loadCurrentTable());
 
   function loadCurrentTable() {
@@ -174,6 +164,9 @@ export function showEquipList(container) {
         </div>
       </div>
     `;
+    // Attach clear button after rendering filters
+    attachClearHandler(box);
+
     const filterInputs = Array.from(box.querySelectorAll('.column-filter'));
     filterInputs.forEach(input => {
       input.addEventListener('input', function() {
@@ -192,7 +185,19 @@ export function showEquipList(container) {
         updateFilteredCount(state.filteredRows.length, state.rows.length);
       });
     });
+
     enableRowHighlighting(box.querySelector('tbody'));
+  }
+
+  function attachClearHandler(box) {
+    const clearBtn = container.querySelector('#clear-filters-btn');
+    if (!clearBtn) return;
+    clearBtn.onclick = () => {
+      box.querySelectorAll('.column-filter').forEach(inp => {
+        inp.value = '';
+        inp.dispatchEvent(new Event('input'));
+      });
+    };
   }
 
   function tableRowHTML(row, columns) {
