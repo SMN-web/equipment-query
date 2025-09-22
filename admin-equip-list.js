@@ -1,4 +1,5 @@
 import { showSpinner, hideSpinner } from './spinner.js';
+import './admin-equip-list.css';
 
 const headerLabels = {
   "slNo": "Sl. No.",
