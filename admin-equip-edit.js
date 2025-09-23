@@ -1,23 +1,12 @@
+
 import { showSpinner, hideSpinner } from './spinner.js';
 
 const headerLabels = {
-  slNo: "Sl. No.",
-  plantNo: "Plant No.",
-  regNo: "Reg No.",
-  description: "Description",
-  capacity: "Capacity",
-  length: "Length",
-  type: "Type",
-  owner: "Owner",
-  train: "Train",
-  location: "Location",
-  engineer: "Engineer",
-  expiryDate: "Expiry Date",
-  status: "Status",
-  riggerCHName: "Rigger C/H Name",
-  riggerPhNo: "Rigger Ph. No.",
-  operatorName: "Operator Name",
-  operatorPhNo: "Operator Ph. No."
+  slNo: "Sl. No.", plantNo: "Plant No.", regNo: "Reg No.", description: "Description",
+  capacity: "Capacity", length: "Length", type: "Type", owner: "Owner", train: "Train",
+  location: "Location", engineer: "Engineer", expiryDate: "Expiry Date", status: "Status",
+  riggerCHName: "Rigger C/H Name", riggerPhNo: "Rigger Ph. No.",
+  operatorName: "Operator Name", operatorPhNo: "Operator Ph. No."
 };
 
 function buildColumns(rawCols, type = "crane") {
@@ -49,6 +38,9 @@ function buildColumns(rawCols, type = "crane") {
 
 export function showEquipEdit(container) {
   container.innerHTML = `
+    <style>
+      .highlight-row { background: #ffe471 !important; }
+    </style>
     <div class="demo-card">
       <h3>✏️ Edit Equipment</h3>
       <div style="margin-bottom:0.8em;">
@@ -58,10 +50,11 @@ export function showEquipEdit(container) {
         </select>
         <span id="edit-equip-count" style="color:#0079bb;font-weight:700;font-size:1em;margin-left:1.5em;"></span>
         <span id="edit-status-msg" style="margin-left:2em;color:#a06102;font-size:0.97em;"></span>
+        <button id="edit-clear-filters-btn" style="margin-left:1.5em;">Clear Filters</button>
       </div>
       <div id="edit-table-container"></div>
       <div id="edit-modal-bg" style="display:none;position:fixed;z-index:99;top:0;left:0;width:100vw;height:100vh;background:#0008;">
-        <div id="edit-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em 1.5em 2em;border-radius:12px;min-width:330px;max-width:99vw;box-shadow:0 2px 38px #0032;overflow-x:auto;">
+        <div id="edit-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em 2.5em 2em;border-radius:12px;min-width:340px;max-width:99vw;min-height:390px;box-shadow:0 2px 38px #0032;overflow-x:auto;">
           <div style="width:100%;overflow-x:auto;">
             <div id="edit-modal-content"></div>
           </div>
@@ -87,6 +80,7 @@ export function showEquipEdit(container) {
 
   const select = container.querySelector('#equipEditSelect');
   const editTableDiv = container.querySelector('#edit-table-container');
+  const clearFiltersBtn = container.querySelector('#edit-clear-filters-btn');
   const modalBg = container.querySelector('#edit-modal-bg');
   const modalContent = container.querySelector('#edit-modal-content');
   const saveBtn = container.querySelector('#edit-save-btn');
@@ -94,16 +88,16 @@ export function showEquipEdit(container) {
   const deleteBtn = container.querySelector('#edit-delete-btn');
   const countSpan = container.querySelector('#edit-equip-count');
   const statusSpan = container.querySelector('#edit-status-msg');
-
-  // Confirmation modal
   const confirmBg = container.querySelector('#confirm-modal-bg');
   const confirmContent = container.querySelector('#confirm-modal-content');
   const confirmBtn = container.querySelector('#confirm-btn');
   const cancelConfirmBtn = container.querySelector('#cancel-btn');
 
-  let allRows = [], columns = [], equipType = "crane", filteredRows = [], filterValues = {}, editingRow = null;
+  let allRows = [], columns = [], equipType = "crane", filteredRows = [], filterValues = {}, editingRow = null, highlightedRow = null;
 
   select.addEventListener('change', loadTable);
+  clearFiltersBtn.onclick = () => { filterValues = {}; renderTable(); };
+
   loadTable();
 
   function loadTable() {
@@ -120,7 +114,6 @@ export function showEquipEdit(container) {
     .then(data => {
       if (!data.success) throw new Error(data.error || "Failed to fetch.");
       columns = buildColumns(data.columns, equipType);
-      // id is included from backend (but NOT displayed)
       allRows = data.rows.map((r, i) => ({...r, slNo: i + 1}));
       filteredRows = [...allRows];
       renderTable();
@@ -132,12 +125,7 @@ export function showEquipEdit(container) {
   }
 
   function renderTable() {
-    filteredRows = allRows.filter(row =>
-      columns.every(col =>
-        !filterValues[col] ||
-        (row[col] ?? "").toString().toLowerCase().includes(filterValues[col].toLowerCase())
-      )
-    );
+    filteredRows = allRows.filter(row => columns.every(col => !filterValues[col] || (row[col] ?? "").toString().toLowerCase().includes(filterValues[col].toLowerCase())));
     countSpan.textContent = `Rows: ${filteredRows.length} of ${allRows.length}`;
     editTableDiv.innerHTML = `
       <div style="overflow-x:auto;">
@@ -150,7 +138,7 @@ export function showEquipEdit(container) {
           </thead>
           <tbody>
             ${filteredRows.map((row, rowIdx) =>
-              `<tr data-row="${rowIdx}">
+              `<tr data-row="${rowIdx}" class="${rowIdx===highlightedRow?'highlight-row':''}">
                 ${columns.map(col => `<td>${row[col] ?? ""}</td>`).join('')}
                 <td><button class="editRowBtn" data-row="${rowIdx}">Edit</button></td>
               </tr>`
@@ -163,9 +151,19 @@ export function showEquipEdit(container) {
       inp.oninput = e => {
         filterValues[inp.dataset.col] = inp.value;
         renderTable();
+        inp.focus(); // fix keyboard/focus kill
       };
     });
     attachRowEditHandlers();
+    // Row highlight on click/cell touch
+    editTableDiv.querySelectorAll('tbody tr').forEach(tr => {
+      tr.onclick = function(e){
+        if (!(e.target.classList.contains('editRowBtn'))) {
+          highlightedRow = +tr.dataset.row;
+          renderTable();
+        }
+      };
+    });
   }
 
   function attachRowEditHandlers() {
@@ -179,7 +177,6 @@ export function showEquipEdit(container) {
   }
 
   function showEditModal(row) {
-    // Keep `id` as a JS property, never shown
     const lockedCols = ['plantNo','regNo'];
     const editableCols = columns.filter(c => !lockedCols.includes(c) && c !== 'slNo');
     modalContent.innerHTML = `
@@ -201,6 +198,7 @@ export function showEquipEdit(container) {
       </div>
     `;
     modalBg.style.display = "block";
+    modalBg.querySelector('#edit-modal').style.minHeight = '390px';
 
     saveBtn.onclick = () => {
       const newRow = {...row};
@@ -228,9 +226,6 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          const idx = allRows.findIndex(r => r.id == row.id && r.regNo == row.regNo);
-          if (idx >= 0) allRows[idx] = {...row, ...newRow};
-          renderTable();
           statusSpan.textContent = "Saving...";
           fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-edit', {
             method: 'POST',
@@ -249,20 +244,24 @@ export function showEquipEdit(container) {
             })
           })
           .then(r => r.json())
-          
-         .then(async res => {
-  if (!res.success) {
-    statusSpan.textContent = "Save failed! " + (res.error || "");
-    alert("Backend error: " + (res.error || "unknown"));
-    return;
-  }
-  statusSpan.textContent = "Saved.";
-})
+          .then(res => {
+            if (!res.success) {
+              statusSpan.textContent = "Save failed! " + (res.error || "");
+              alert("Backend error: " + (res.error || "unknown"));
+            } else {
+              statusSpan.textContent = "Saved.";
+              loadTable();
+            }
+          });
         }
       );
     };
 
-    cancelBtn.onclick = () => { modalBg.style.display = "none"; };
+    cancelBtn.onclick = () => {
+      modalBg.style.display = "none";
+      renderTable(); // reset UI: no edit leaks
+    };
+
     deleteBtn.onclick = () => {
       modalBg.style.display = "none";
       showConfirmModal(
@@ -284,13 +283,12 @@ export function showEquipEdit(container) {
           })
           .then(r => r.json())
           .then(res => {
-            if (!res.success) throw new Error(res.error);
-            allRows = allRows.filter(r => r.id != row.id);
-            renderTable();
-            statusSpan.textContent = "Deleted.";
-          })
-          .catch(() => {
-            statusSpan.textContent = "Delete failed!";
+            if (!res.success) {
+              statusSpan.textContent = "Delete failed!";
+            } else {
+              statusSpan.textContent = "Deleted.";
+              loadTable();
+            }
           });
         }
       );
@@ -300,10 +298,7 @@ export function showEquipEdit(container) {
   function showConfirmModal(html, onConfirm) {
     confirmContent.innerHTML = html;
     confirmBg.style.display = "block";
-    confirmBtn.onclick = () => {
-      confirmBg.style.display = "none";
-      onConfirm();
-    };
+    confirmBtn.onclick = () => { confirmBg.style.display = "none"; onConfirm(); };
     cancelConfirmBtn.onclick = () => { confirmBg.style.display = "none"; };
   }
 }
