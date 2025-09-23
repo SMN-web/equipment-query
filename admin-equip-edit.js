@@ -95,7 +95,7 @@ export function showEquipEdit(container) {
   function loadTable() {
     equipType = select.value;
     showSpinner();
-    fetch(`/api/equipment-list?type=${equipType}`)
+    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${equipType}`)
       .then(r => r.json()).then(data => {
       hideSpinner();
       columns = buildColumns(data.columns, equipType);
@@ -223,7 +223,7 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          fetch('/api/equipment-edit', {
+          fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-edit', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          fetch('/api/equipment-delete', {
+          fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-delete', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
