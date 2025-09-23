@@ -1,4 +1,3 @@
-
 import { showSpinner, hideSpinner } from './spinner.js';
 
 const headerLabels = {
@@ -10,14 +9,11 @@ const headerLabels = {
 };
 
 function buildColumns(rawCols, type = "crane") {
-  let cols = rawCols.filter(c =>
-    c !== 'updaterUsername' && c !== 'createdAt' && c !== 'updatedAt'
-  );
+  let cols = rawCols.filter(c => c !== 'updaterUsername' && c !== 'createdAt' && c !== 'updatedAt');
   if (!cols.includes('expiryDate')) cols.push('expiryDate');
   if (!cols.includes('riggerCHName')) cols.push('riggerCHName');
   if (!cols.includes('riggerPhNo')) cols.push('riggerPhNo');
   if (cols[0] !== 'slNo') cols.unshift('slNo');
-
   if (type === "crane") {
     let idxEng = cols.indexOf('engineer');
     let arr = cols.filter(c => !['expiryDate', 'status', 'riggerCHName', 'riggerPhNo'].includes(c));
@@ -38,140 +34,144 @@ function buildColumns(rawCols, type = "crane") {
 
 export function showEquipEdit(container) {
   container.innerHTML = `
-    <style>
-      .highlight-row { background: #ffe471 !important; }
-    </style>
     <div class="demo-card">
       <h3>✏️ Edit Equipment</h3>
-      <div style="margin-bottom:0.8em;">
-        <select id="equipEditSelect" style="font-size:1.08em;padding:6px 13px 6px 8px;min-width:110px;">
+      <div class="equip-list-toolbar">
+        <select id="equipEditSelect" class="equip-table-selector">
           <option value="crane">Crane Equipment</option>
           <option value="manlift">Manlift Equipment</option>
         </select>
-        <span id="edit-equip-count" style="color:#0079bb;font-weight:700;font-size:1em;margin-left:1.5em;"></span>
-        <span id="edit-status-msg" style="margin-left:2em;color:#a06102;font-size:0.97em;"></span>
-        <button id="edit-clear-filters-btn" style="margin-left:1.5em;">Clear Filters</button>
+        <span class="equip-filtered-count" id="equipFilteredCount"></span>
+        <span class="equip-row-count-info" id="equipRowCountInfo"></span>
+        <button id="edit-clear-filters-btn">Clear Filters</button>
       </div>
-      <div id="edit-table-container"></div>
+      <div class="equip-table-container" id="editTableContainer"></div>
       <div id="edit-modal-bg" style="display:none;position:fixed;z-index:99;top:0;left:0;width:100vw;height:100vh;background:#0008;">
         <div id="edit-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em 2.5em 2em;border-radius:12px;min-width:340px;max-width:99vw;min-height:390px;box-shadow:0 2px 38px #0032;overflow-x:auto;">
-          <div style="width:100%;overflow-x:auto;">
-            <div id="edit-modal-content"></div>
-          </div>
-          <div style="text-align:right;margin-top:18px;white-space:nowrap;">
-            <button id="edit-save-btn" style="font-size:1.07em;margin-right:13px;background:#2359af;color:#fff;padding:6px 22px;border:none;border-radius:6px;">Save</button>
-            <button id="edit-cancel-btn" style="font-size:1.07em;margin-right:13px;">Cancel</button>
-            <button id="edit-delete-btn" style="font-size:1.07em;color:#fff;background:#c11;padding:6px 22px;border:none;border-radius:6px;">Delete</button>
+          <div style="width:100%;overflow-x:auto;"><div id="edit-modal-content"></div></div>
+          <div class="equip-modal-actions" style="text-align:center;margin-top:18px;">
+            <button id="edit-save-btn" style="background:#2359af;color:#fff;font-size:1.1em;padding:9px 22px;margin:0 14px;border-radius:6px;border:none;">Save</button>
+            <button id="edit-cancel-btn" style="background:#197ac8;color:#fff;font-size:1.1em;padding:9px 22px;margin:0 14px;border-radius:6px;border:none;">Cancel</button>
+            <button id="edit-delete-btn" style="background:#c70b18;color:#fff;font-size:1.07em;padding:9px 22px;margin:0 14px;border-radius:6px;border:none;">Delete</button>
           </div>
         </div>
       </div>
       <div id="confirm-modal-bg" style="display:none;position:fixed;z-index:100;top:0;left:0;width:100vw;height:100vh;background:#0009;">
-        <div id="confirm-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2.2em 2em 1.6em 2em;border-radius:12px;min-width:315px;max-width:95vw;box-shadow:0 2px 38px #0033;">
+        <div id="confirm-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2.2em 2em 1.6em 2em;border-radius:12px;min-width:315px;max-width:95vw;">
           <div id="confirm-modal-content"></div>
-          <div style="text-align:right;margin-top:14px;">
-            <button id="confirm-btn" style="font-size:1em;margin-right:16px;background:#136320;color:#fff;padding:5px 19px;border:none;border-radius:6px;">Confirm</button>
-            <button id="cancel-btn" style="font-size:1em;">Cancel</button>
+          <div style="text-align:center;margin-top:14px;">
+            <button id="confirm-btn" style="background:#136320;color:#fff;font-size:1em;padding:7px 19px;margin:0 17px;border-radius:6px;border:none;">Confirm</button>
+            <button id="cancel-btn" style="background:#d4e2ff;font-size:1em;padding:7px 19px;margin:0 17px;border-radius:6px;border:none;">Cancel</button>
           </div>
         </div>
       </div>
-      <p class="demo-txt">Edit modal disables Plant No and Reg No. All changes go by id and regNo; confirmation before saving/deleting.</p>
     </div>
   `;
 
-  const select = container.querySelector('#equipEditSelect');
-  const editTableDiv = container.querySelector('#edit-table-container');
-  const clearFiltersBtn = container.querySelector('#edit-clear-filters-btn');
+  // --- DOM refs ---
+  const select = container.querySelector("#equipEditSelect");
+  const clearFiltersBtn = container.querySelector("#edit-clear-filters-btn");
+  const editTableDiv = container.querySelector("#editTableContainer");
+  const equipFilteredCount = container.querySelector("#equipFilteredCount");
+  const equipRowCountInfo = container.querySelector("#equipRowCountInfo");
   const modalBg = container.querySelector('#edit-modal-bg');
   const modalContent = container.querySelector('#edit-modal-content');
   const saveBtn = container.querySelector('#edit-save-btn');
   const cancelBtn = container.querySelector('#edit-cancel-btn');
   const deleteBtn = container.querySelector('#edit-delete-btn');
-  const countSpan = container.querySelector('#edit-equip-count');
-  const statusSpan = container.querySelector('#edit-status-msg');
   const confirmBg = container.querySelector('#confirm-modal-bg');
   const confirmContent = container.querySelector('#confirm-modal-content');
   const confirmBtn = container.querySelector('#confirm-btn');
   const cancelConfirmBtn = container.querySelector('#cancel-btn');
 
-  let allRows = [], columns = [], equipType = "crane", filteredRows = [], filterValues = {}, editingRow = null, highlightedRow = null;
+  let equipType = "crane", allRows = [], columns = [], filteredRows = [], filterValues = {}, highlightedRow = null;
+  let lastFilterFocus = null;  // for keyboard focus
 
-  select.addEventListener('change', loadTable);
+  select.onchange = loadTable;
   clearFiltersBtn.onclick = () => { filterValues = {}; renderTable(); };
 
   loadTable();
 
   function loadTable() {
     equipType = select.value;
-    allRows = [];
-    columns = [];
-    filterValues = {};
-    editTableDiv.innerHTML = "Loading...";
-    statusSpan.textContent = "";
-    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${equipType}`, {
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.success) throw new Error(data.error || "Failed to fetch.");
+    showSpinner();
+    fetch(`/api/equipment-list?type=${equipType}`)
+      .then(r => r.json()).then(data => {
+      hideSpinner();
       columns = buildColumns(data.columns, equipType);
-      allRows = data.rows.map((r, i) => ({...r, slNo: i + 1}));
-      filteredRows = [...allRows];
+      allRows = data.rows.map((r,i)=>({...r,slNo:i+1}));
       renderTable();
-      countSpan.textContent = `Rows: ${filteredRows.length} of ${allRows.length}`;
-    })
-    .catch(() => {
-      editTableDiv.innerHTML = `<div style="color:#d00;font-weight:500;">Fetch failed.</div>`;
     });
   }
 
   function renderTable() {
-    filteredRows = allRows.filter(row => columns.every(col => !filterValues[col] || (row[col] ?? "").toString().toLowerCase().includes(filterValues[col].toLowerCase())));
-    countSpan.textContent = `Rows: ${filteredRows.length} of ${allRows.length}`;
+    filteredRows = allRows.filter(row =>
+      columns.every(col => !filterValues[col] || (row[col]||"").toString().toLowerCase().includes(filterValues[col].toLowerCase()))
+    );
+    equipFilteredCount.textContent = filteredRows.length;
+    equipRowCountInfo.textContent = `Rows: ${filteredRows.length} of ${allRows.length}`;
+    // Responsive head, filters
+    const filterHead = columns.map(col => `<th><input class="column-filter" data-col="${col}" value="${filterValues[col]||""}" placeholder="Filter..." /></th>`).join('') + '<th></th>';
     editTableDiv.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="equip-list-table">
-          <thead>
-            <tr>${columns.map(c => `<th>${headerLabels[c] || c}</th>`).join('')}<th>Edit</th></tr>
-            <tr>${columns.map(col =>
-              `<th><input data-col="${col}" type="text" class="edit-filter" value="${filterValues[col] || ""}" placeholder="Filter..." style="width:98%;padding:3px;"/> </th>`
-            ).join('')}<th></th></tr>
-          </thead>
-          <tbody>
-            ${filteredRows.map((row, rowIdx) =>
-              `<tr data-row="${rowIdx}" class="${rowIdx===highlightedRow?'highlight-row':''}">
-                ${columns.map(col => `<td>${row[col] ?? ""}</td>`).join('')}
-                <td><button class="editRowBtn" data-row="${rowIdx}">Edit</button></td>
-              </tr>`
-            ).join('')}
-          </tbody>
-        </table>
-      </div>
+      <table class='equip-list-table'>
+        <thead>
+          <tr>${columns.map(c => `<th>${headerLabels[c] || c}</th>`).join('')}<th>Edit</th></tr>
+          <tr>${filterHead}</tr>
+        </thead>
+        <tbody>
+          ${filteredRows.map((row, rowIdx) =>
+            `<tr data-row="${rowIdx}" class="${rowIdx===highlightedRow?'highlight-row':''}">
+              ${columns.map(col => `<td>${row[col]??""}</td>`).join('')}
+              <td><button class="editRowBtn" data-row="${rowIdx}">Edit</button></td>
+            </tr>`
+          ).join('')}
+        </tbody>
+      </table>
     `;
-    editTableDiv.querySelectorAll('.edit-filter').forEach(inp => {
+    // --- Filter focus logic ---
+    const filterInputs = [...editTableDiv.querySelectorAll('.column-filter')];
+    filterInputs.forEach(inp => {
       inp.oninput = e => {
         filterValues[inp.dataset.col] = inp.value;
+        lastFilterFocus = { col: inp.dataset.col, pos: inp.selectionStart };
         renderTable();
-        inp.focus(); // fix keyboard/focus kill
       };
+      inp.onfocus = () => {
+        lastFilterFocus = { col: inp.dataset.col, pos: inp.selectionStart };
+      };
+      inp.onblur = () => {};
     });
-    attachRowEditHandlers();
-    // Row highlight on click/cell touch
+    if (lastFilterFocus) {
+      const el = filterInputs.find(i => i.dataset.col === lastFilterFocus.col);
+      if (el) {
+        el.focus();
+        if (typeof lastFilterFocus.pos === "number") el.setSelectionRange(lastFilterFocus.pos, lastFilterFocus.pos);
+      }
+    }
+    document.addEventListener("mousedown", e => {
+      if (!e.target.classList.contains("column-filter")) lastFilterFocus = null;
+    }, {once: true});
+    document.addEventListener("touchstart", e => {
+      if (!e.target.classList.contains("column-filter")) lastFilterFocus = null;
+    }, {once: true});
+    // --- Row highlight on tap/click ---
     editTableDiv.querySelectorAll('tbody tr').forEach(tr => {
       tr.onclick = function(e){
-        if (!(e.target.classList.contains('editRowBtn'))) {
+        if (!e.target.closest('button')) {
           highlightedRow = +tr.dataset.row;
           renderTable();
         }
       };
     });
+    // --- Edit modal logic (as in your working code): attachRowEditHandlers, showEditModal, showConfirmModal ---
+    attachRowEditHandlers();
   }
 
   function attachRowEditHandlers() {
     editTableDiv.querySelectorAll('.editRowBtn').forEach(btn => {
       btn.onclick = () => {
         const rowIdx = +btn.dataset.row;
-        editingRow = filteredRows[rowIdx];
-        showEditModal(editingRow);
+        showEditModal(filteredRows[rowIdx]);
       };
     });
   }
@@ -189,8 +189,8 @@ export function showEquipEdit(container) {
             ${columns.map(col =>
               `<td>${
                 lockedCols.includes(col)
-                  ? `<input type="text" value="${row[col] ?? ''}" readonly style="background:#f8f9fc;color:#919;min-width:105px;"/>`
-                  : `<input type="text" id="edit-input-${col}" value="${row[col] ?? ''}" style="min-width:105px;max-width:300px;"/>`
+                  ? `<input type="text" value="${row[col] ?? ''}" readonly style="background:#f8f9fc;color:#919;min-width:98px;max-width:180px;"/>`
+                  : `<input type="text" id="edit-input-${col}" value="${row[col] ?? ''}" style="min-width:98px;max-width:290px;"/>`
               }</td>`
             ).join('')}
           </tr>
@@ -198,8 +198,6 @@ export function showEquipEdit(container) {
       </div>
     `;
     modalBg.style.display = "block";
-    modalBg.querySelector('#edit-modal').style.minHeight = '390px';
-
     saveBtn.onclick = () => {
       const newRow = {...row};
       editableCols.forEach(col => {
@@ -208,7 +206,6 @@ export function showEquipEdit(container) {
       const changedCols = editableCols.filter(col => String(row[col] ?? '') !== String(newRow[col] ?? ''));
       if (changedCols.length === 0) {
         modalBg.style.display = "none";
-        statusSpan.textContent = "No changes made.";
         return;
       }
       modalBg.style.display = "none";
@@ -226,8 +223,7 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          statusSpan.textContent = "Saving...";
-          fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-edit', {
+          fetch('/api/equipment-edit', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -244,24 +240,11 @@ export function showEquipEdit(container) {
             })
           })
           .then(r => r.json())
-          .then(res => {
-            if (!res.success) {
-              statusSpan.textContent = "Save failed! " + (res.error || "");
-              alert("Backend error: " + (res.error || "unknown"));
-            } else {
-              statusSpan.textContent = "Saved.";
-              loadTable();
-            }
-          });
+          .then(res => { if (res.success) loadTable(); });
         }
       );
     };
-
-    cancelBtn.onclick = () => {
-      modalBg.style.display = "none";
-      renderTable(); // reset UI: no edit leaks
-    };
-
+    cancelBtn.onclick = () => { modalBg.style.display = "none"; renderTable(); };
     deleteBtn.onclick = () => {
       modalBg.style.display = "none";
       showConfirmModal(
@@ -272,8 +255,7 @@ export function showEquipEdit(container) {
          </table>
         `,
         () => {
-          statusSpan.textContent = "Deleting...";
-          fetch('https://ad-eq-ed.smnglobal.workers.dev/api/equipment-delete', {
+          fetch('/api/equipment-delete', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -282,14 +264,7 @@ export function showEquipEdit(container) {
             body: JSON.stringify({ equipmentType: equipType, id: row.id, regNo: row.regNo })
           })
           .then(r => r.json())
-          .then(res => {
-            if (!res.success) {
-              statusSpan.textContent = "Delete failed!";
-            } else {
-              statusSpan.textContent = "Deleted.";
-              loadTable();
-            }
-          });
+          .then(res => { if (res.success) loadTable(); });
         }
       );
     };
