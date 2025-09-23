@@ -1,19 +1,21 @@
 import { showSpinner, hideSpinner } from './spinner.js';
 
+// --- Labels & Column Logic ---
 const headerLabels = {
   slNo: "Sl. No.", plantNo: "Plant No.", regNo: "Reg No.", description: "Description",
-  capacity: "Capacity", length: "Length", type: "Type", owner: "Owner", train: "Train",
-  location: "Location", engineer: "Engineer", expiryDate: "Expiry Date", status: "Status",
-  riggerCHName: "Rigger C/H Name", riggerPhNo: "Rigger Ph. No.",
+  capacity: "Capacity", length: "Length", type: "Type", owner: "Owner",
+  train: "Train", location: "Location", engineer: "Engineer", expiryDate: "Expiry Date",
+  status: "Status", riggerCHName: "Rigger C/H Name", riggerPhNo: "Rigger Ph. No.",
   operatorName: "Operator Name", operatorPhNo: "Operator Ph. No."
 };
 
 function buildColumns(rawCols, type = "crane") {
-  let cols = rawCols.filter(c => c !== 'updaterUsername' && c !== 'createdAt' && c !== 'updatedAt');
+  let cols = rawCols.filter(c => !['updaterUsername','createdAt','updatedAt'].includes(c));
   if (!cols.includes('expiryDate')) cols.push('expiryDate');
   if (!cols.includes('riggerCHName')) cols.push('riggerCHName');
   if (!cols.includes('riggerPhNo')) cols.push('riggerPhNo');
   if (cols[0] !== 'slNo') cols.unshift('slNo');
+
   if (type === "crane") {
     let idxEng = cols.indexOf('engineer');
     let arr = cols.filter(c => !['expiryDate', 'status', 'riggerCHName', 'riggerPhNo'].includes(c));
@@ -45,9 +47,9 @@ export function showEquipEdit(container) {
         <span class="equip-row-count-info" id="equipRowCountInfo"></span>
         <button id="edit-clear-filters-btn">Clear Filters</button>
       </div>
-      <div class="equip-table-container" id="editTableContainer"></div>
+      <div class="equip-table-container" id="edit-table-container"></div>
       <div id="edit-modal-bg" style="display:none;position:fixed;z-index:99;top:0;left:0;width:100vw;height:100vh;background:#0008;">
-        <div id="edit-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em 2.5em 2em;border-radius:12px;min-width:340px;max-width:99vw;min-height:390px;box-shadow:0 2px 38px #0032;overflow-x:auto;">
+        <div id="edit-modal" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em 2.5em 2em;border-radius:12px;min-width:340px;max-width:99vw;min-height:390px;overflow-x:auto;">
           <div style="width:100%;overflow-x:auto;"><div id="edit-modal-content"></div></div>
           <div class="equip-modal-actions" style="text-align:center;margin-top:18px;">
             <button id="edit-save-btn" style="background:#2359af;color:#fff;font-size:1.1em;padding:9px 22px;margin:0 14px;border-radius:6px;border:none;">Save</button>
@@ -68,10 +70,10 @@ export function showEquipEdit(container) {
     </div>
   `;
 
-  // --- DOM refs ---
+  // ------ DOM Refs ------
   const select = container.querySelector("#equipEditSelect");
   const clearFiltersBtn = container.querySelector("#edit-clear-filters-btn");
-  const editTableDiv = container.querySelector("#editTableContainer");
+  const editTableDiv = container.querySelector("#edit-table-container");
   const equipFilteredCount = container.querySelector("#equipFilteredCount");
   const equipRowCountInfo = container.querySelector("#equipRowCountInfo");
   const modalBg = container.querySelector('#edit-modal-bg');
@@ -95,8 +97,7 @@ export function showEquipEdit(container) {
   function loadTable() {
     equipType = select.value;
     showSpinner();
-    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${equipType}`)
-      .then(r => r.json()).then(data => {
+    fetch(`https://ad-eq-li.smnglobal.workers.dev/api/equipment-list?type=${equipType}`).then(r => r.json()).then(data => {
       hideSpinner();
       columns = buildColumns(data.columns, equipType);
       allRows = data.rows.map((r,i)=>({...r,slNo:i+1}));
@@ -106,17 +107,17 @@ export function showEquipEdit(container) {
 
   function renderTable() {
     filteredRows = allRows.filter(row =>
-      columns.every(col => !filterValues[col] || (row[col]||"").toString().toLowerCase().includes(filterValues[col].toLowerCase()))
+      columns.every(col => !filterValues[col] || (row[col]||"").toLowerCase().includes(filterValues[col].toLowerCase()))
     );
     equipFilteredCount.textContent = filteredRows.length;
     equipRowCountInfo.textContent = `Rows: ${filteredRows.length} of ${allRows.length}`;
-    // Responsive head, filters
-    const filterHead = columns.map(col => `<th><input class="column-filter" data-col="${col}" value="${filterValues[col]||""}" placeholder="Filter..." /></th>`).join('') + '<th></th>';
+
+    const filterRow = columns.map(col => `<th><input class="column-filter" data-col="${col}" value="${filterValues[col]||""}" placeholder="Filter..." /></th>`).join('') + '<th></th>';
     editTableDiv.innerHTML = `
       <table class='equip-list-table'>
         <thead>
           <tr>${columns.map(c => `<th>${headerLabels[c] || c}</th>`).join('')}<th>Edit</th></tr>
-          <tr>${filterHead}</tr>
+          <tr>${filterRow}</tr>
         </thead>
         <tbody>
           ${filteredRows.map((row, rowIdx) =>
@@ -128,6 +129,7 @@ export function showEquipEdit(container) {
         </tbody>
       </table>
     `;
+
     // --- Filter focus logic ---
     const filterInputs = [...editTableDiv.querySelectorAll('.column-filter')];
     filterInputs.forEach(inp => {
@@ -136,9 +138,7 @@ export function showEquipEdit(container) {
         lastFilterFocus = { col: inp.dataset.col, pos: inp.selectionStart };
         renderTable();
       };
-      inp.onfocus = () => {
-        lastFilterFocus = { col: inp.dataset.col, pos: inp.selectionStart };
-      };
+      inp.onfocus = () => { lastFilterFocus = { col: inp.dataset.col, pos: inp.selectionStart }; };
       inp.onblur = () => {};
     });
     if (lastFilterFocus) {
@@ -154,7 +154,8 @@ export function showEquipEdit(container) {
     document.addEventListener("touchstart", e => {
       if (!e.target.classList.contains("column-filter")) lastFilterFocus = null;
     }, {once: true});
-    // --- Row highlight on tap/click ---
+
+    // --- Row highlight ---
     editTableDiv.querySelectorAll('tbody tr').forEach(tr => {
       tr.onclick = function(e){
         if (!e.target.closest('button')) {
@@ -163,7 +164,6 @@ export function showEquipEdit(container) {
         }
       };
     });
-    // --- Edit modal logic (as in your working code): attachRowEditHandlers, showEditModal, showConfirmModal ---
     attachRowEditHandlers();
   }
 
