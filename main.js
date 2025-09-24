@@ -23,7 +23,7 @@ window.logout = async function() {
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        
       });
       if (!resp.ok) {
         const result = await resp.json().catch(() => ({}));
