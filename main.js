@@ -17,15 +17,21 @@ window.logout = async function() {
   const token = localStorage.getItem('auth_token');
   if (token) {
     try {
-      // Call logout API to update user status server-side
-      await fetch('https://lo-ou.smnglobal.workers.dev/api/logout', {
+      const resp = await fetch('https://lo-ou.smnglobal.workers.dev/api/logout', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token }
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      if (!resp.ok) {
+        const result = await resp.json().catch(() => ({}));
+        alert('Logout failed: ' + (result.error || 'Unknown error'));
+      }
     } catch (err) {
       console.error('Logout API error:', err);
     }
-    // Remove token and reload UI
     localStorage.removeItem('auth_token');
   }
   location.reload();
