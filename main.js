@@ -22,7 +22,7 @@ window.logout = async function() {
         headers: {
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json'
-        },
+        }
         
       });
       if (!resp.ok) {
